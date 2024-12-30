@@ -1,8 +1,8 @@
 # Task Reminder System
 
-Bu proje, MERN stack (MongoDB, Express.js, React.js, Node.js) kullanılarak geliştirilmiş bir görev hatırlatma sistemidir.
+This project is a task reminder system developed using the MERN stack (MongoDB, Express.js, React.js, Node.js).
 
-## Teknolojiler
+## Technologies
 
 ### Backend
 - Node.js
@@ -16,60 +16,60 @@ Bu proje, MERN stack (MongoDB, Express.js, React.js, Node.js) kullanılarak geli
 - Axios
 - React Router
 
-## Özellikler
+## Features
 
-### Kullanıcı Yönetimi
-- Kullanıcı kaydı ve girişi
-- JWT tabanlı kimlik doğrulama
-- Kullanıcı oturumu yönetimi
+### User Management
+- User registration and login
+- JWT-based authentication
+- User session management
 
-### Görev Yönetimi
-- Görev oluşturma
-- Görev düzenleme
-- Görev silme
-- Görev detaylarını görüntüleme
-- Görev kartları görünümü
+### Task Management
+- Task creation
+- Task editing
+- Task deletion
+- Task details viewing
+- Task card view
 
-### Hatırlatma Sistemi
-- Görevler için hatırlatma zamanı ayarlama
-- Zamanı geldiğinde otomatik hatırlatma
-- Hatırlatma seçenekleri:
-  - Tamamla (Complete)
-  - İptal et (Cancel)
-  - Ertele (Postpone)
-    - 5 dakika
-    - 10 dakika
-    - 15 dakika
-    - 30 dakika
-    - 1 saat
-    - Yarın
-    - Özel tarih/saat
+### Reminder System
+- Set reminder time for tasks
+- Automatic reminder when due
+- Reminder options:
+  - Complete
+  - Cancel
+  - Postpone
+    - 5 minutes
+    - 10 minutes
+    - 15 minutes
+    - 30 minutes
+    - 1 hour
+    - Tomorrow
+    - Custom date/time
 
-### Aktivite Takibi
-- Sağ panelde aktivite geçmişi
-- Farklı aktivite türleri için ikonlar:
-  - Hatırlatma bildirimleri
-  - Görev oluşturma
-  - Görev tamamlama
-  - Görev erteleme
-  - Hatırlatma iptali
+### Activity Tracking
+- Activity history in right panel
+- Icons for different activity types:
+  - Reminder notifications
+  - Task creation
+  - Task completion
+  - Task postponement
+  - Reminder cancellation
 
-### Zaman Yönetimi
-- Sağ üst köşede canlı saat gösterimi
-- Dakika bazlı hatırlatma sistemi
-- Timezone uyumlu çalışma
+### Time Management
+- Live clock display in top right corner
+- Minute-based reminder system
+- Timezone compatible operation
 
-## Teknik Detaylar
+## Technical Details
 
-### Backend Yapısı
+### Backend Structure
 - Models:
-  - User Model (kullanıcı bilgileri)
-  - Task Model (görev detayları)
+  - User Model (user information)
+  - Task Model (task details)
 - Routes:
-  - User Routes (kimlik doğrulama)
-  - Task Routes (CRUD işlemleri)
+  - User Routes (authentication)
+  - Task Routes (CRUD operations)
 
-### Frontend Yapısı
+### Frontend Structure
 - Pages:
   - Login
   - Dashboard
@@ -80,44 +80,44 @@ Bu proje, MERN stack (MongoDB, Express.js, React.js, Node.js) kullanılarak geli
   - Reminder Dialog
   - Activity Log Sidebar
 
-## Kurulum
+## Installation
 
-1. Backend'i başlatmak için:
+1. To start the Backend:
 ```bash
 cd TaskRemainder
 node server.js
 ```
 
-2. Frontend'i başlatmak için:
+2. To start the Frontend:
 ```bash
 cd TaskRemainder/client
 npm start
 ```
 
-3. MongoDB'nin çalıştığından emin olun:
-- Windows Services'den MongoDB'nin çalışır durumda olduğunu kontrol edin
+3. Make sure MongoDB is running:
+- Check if MongoDB is running in Windows Services
 
-4. Tarayıcıda uygulamayı açın:
-- Otomatik açılmazsa: http://10.102.37.150:3000
+4. Open the application in browser:
+- If not automatic: http://10.102.37.150:3000
 
-## Geliştirme Sürecinde Çözülen Sorunlar
+## Issues Resolved During Development
 
-1. Timezone Sorunları:
-- Saat farkından kaynaklanan gösterim problemleri
-- Hatırlatma zamanlaması sorunları
+1. Timezone Issues:
+- Display problems due to time differences
+- Reminder scheduling issues
 
-2. Hatırlatma Sistemi İyileştirmeleri:
-- Saniye hassasiyeti kaldırıldı
-- Dakika bazlı kontrol sistemi eklendi
-- Çoklu görev hatırlatma sorunları çözüldü
+2. Reminder System Improvements:
+- Removed second precision
+- Added minute-based control system
+- Fixed multiple task reminder issues
 
-3. UI/UX İyileştirmeleri:
-- Activity log sidebar'ı eklendi
-- Dinamik saat gösterimi eklendi
-- Görev kartları görünümü geliştirildi
+3. UI/UX Improvements:
+- Added activity log sidebar
+- Added dynamic clock display
+- Improved task card view
 
-## Notlar
+## Notes
 
-- Backend çalışmadan frontend'in tam fonksiyonel çalışmayacağını unutmayın
-- MongoDB bağlantısı olmadan backend başlatılamaz
-- Her iki servis de (backend ve frontend) çalışır durumda olmalı 
+- Frontend won't be fully functional without the backend running
+- Backend cannot start without MongoDB connection
+- Both services (backend and frontend) must be running 

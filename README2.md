@@ -1,77 +1,77 @@
-# Task Reminder System - Geliştirme Süreci
+# Task Reminder System - Development Process
 
-## Başlangıç Aşaması
+## Initial Phase
 
-**İstek**: Şirket için özel bir görev hatırlatma sistemi geliştirilmesi talep edildi.
+**Request**: Development of a custom task reminder system for the company was requested.
 
-**Yanıt**: MERN stack (MongoDB, Express.js, React.js, Node.js) kullanılması önerildi çünkü:
-- Kolay geliştirme
-- Modern teknolojiler
-- Gerçek zamanlı güncelleme
-- Verimli veritabanı yönetimi
+**Response**: MERN stack (MongoDB, Express.js, React.js, Node.js) was suggested because:
+- Easy development
+- Modern technologies
+- Real-time updates
+- Efficient database management
 
-## Backend Geliştirme
+## Backend Development
 
-### 1. Model Oluşturma
-**İstek**: Backend için gerekli modellerin oluşturulması.
+### 1. Model Creation
+**Request**: Creation of required models for the backend.
 
-**Yanıt**: İki temel model oluşturuldu:
-- `User.js`: Kullanıcı bilgileri için
+**Response**: Two main models were created:
+- `User.js`: For user information
   - username (unique)
   - password (hashed)
   - name
   - role (user/admin)
   - createdAt
 
-- `Task.js`: Görev bilgileri için
+- `Task.js`: For task information
   - title
   - description
-  - assignedTo (User referansı)
-  - createdBy (User referansı)
+  - assignedTo (User reference)
+  - createdBy (User reference)
   - status
   - dueDateTime
   - reminderDateTime
   - createdAt
 
-### 2. Route Yapılandırması
-**İstek**: API endpoint'lerinin oluşturulması.
+### 2. Route Configuration
+**Request**: Creation of API endpoints.
 
-**Yanıt**: İki ana route grubu oluşturuldu:
-- `userRoutes.js`: Kullanıcı işlemleri
-  - Kayıt
-  - Giriş
-  - JWT doğrulama
+**Response**: Two main route groups were created:
+- `userRoutes.js`: User operations
+  - Registration
+  - Login
+  - JWT authentication
 
-- `taskRoutes.js`: Görev işlemleri
-  - CRUD operasyonları
-  - Görev atama
-  - Durum güncelleme
+- `taskRoutes.js`: Task operations
+  - CRUD operations
+  - Task assignment
+  - Status updates
 
-## Frontend Geliştirme
+## Frontend Development
 
-### 1. Temel Yapı
-**İstek**: Kullanıcı arayüzünün oluşturulması.
+### 1. Basic Structure
+**Request**: Creation of user interface.
 
-**Yanıt**: Material-UI kullanılarak:
-- Login sayfası
+**Response**: Using Material-UI:
+- Login page
 - Dashboard
-- Görev kartları
-- Modallar oluşturuldu
+- Task cards
+- Modals were created
 
-### 2. Hatırlatma Sistemi
-**İstek**: Görev hatırlatma özelliğinin eklenmesi.
+### 2. Reminder System
+**Request**: Addition of task reminder feature.
 
-**Yanıt**: 
-- Hatırlatma penceresi
-- Erteleme seçenekleri
-- Tamamlama/İptal butonları eklendi
+**Response**: 
+- Reminder window
+- Postpone options
+- Complete/Cancel buttons were added
 
-## Karşılaşılan Sorunlar ve Çözümleri
+## Encountered Problems and Solutions
 
-### 1. Timezone Sorunu
-**Problem**: Seçilen saat ile gösterilen saat arasında 3 saat fark vardı.
+### 1. Timezone Issue
+**Problem**: There was a 3-hour difference between selected time and displayed time.
 
-**Çözüm**: 
+**Solution**: 
 ```javascript
 const formatDateForInput = (dateString) => {
   if (!dateString) return '';
@@ -82,55 +82,55 @@ const formatDateForInput = (dateString) => {
 };
 ```
 
-### 2. Hatırlatma Penceresi Sorunu
-**Problem**: Complete/Cancel butonları çalışmıyor ve pencere tekrar açılıyordu.
+### 2. Reminder Window Issue
+**Problem**: Complete/Cancel buttons weren't working and window kept reopening.
 
-**Çözüm**:
-- State yönetimi düzeltildi
-- Görev durumu anında güncellendi
-- Saniye hassasiyeti kaldırıldı
+**Solution**:
+- Fixed state management
+- Task status updated instantly
+- Removed second precision
 
-### 3. Çoklu Görev Hatırlatması
-**Problem**: Yanlış görevin hatırlatması gösteriliyordu.
+### 3. Multiple Task Reminders
+**Problem**: Wrong task reminder was being shown.
 
-**Çözüm**:
-- Görevler tarih sırasına göre sıralandı
-- Aktif hatırlatma kontrolü eklendi
+**Solution**:
+- Tasks sorted by date
+- Added active reminder check
 ```javascript
 const sortedTasks = [...tasks].sort((a, b) => 
   new Date(a.reminderDateTime) - new Date(b.reminderDateTime)
 );
 ```
 
-## Son İyileştirmeler
+## Final Improvements
 
 ### 1. Activity Log
-**İstek**: Tüm aktivitelerin görüntülenmesi.
+**Request**: Display of all activities.
 
-**Yanıt**: 
-- Sağ panele activity log eklendi
-- Her işlem için özel ikonlar
-- Kronolojik sıralama
+**Response**: 
+- Added activity log to right panel
+- Custom icons for each operation
+- Chronological ordering
 
-### 2. Zaman Yönetimi
-**İstek**: Dakika bazlı kontrol istendi.
+### 2. Time Management
+**Request**: Minute-based control was requested.
 
-**Yanıt**:
-- Saniye hassasiyeti kaldırıldı
-- Dakika başlarında kontrol
-- Dinamik saat gösterimi
+**Response**:
+- Removed second precision
+- Check at the start of minutes
+- Dynamic clock display
 
-## Başlatma Talimatları
+## Startup Instructions
 
-Her oturumda:
-1. MongoDB servisinin çalıştığından emin olun
-2. Backend'i başlatın: `node server.js`
-3. Frontend'i başlatın: `npm start`
-4. `http://10.102.37.150:3000` adresine gidin
+For each session:
+1. Make sure MongoDB service is running
+2. Start backend: `node server.js`
+3. Start frontend: `npm start`
+4. Go to `http://10.102.37.150:3000`
 
-## Önemli Notlar
+## Important Notes
 
-- Backend ve MongoDB çalışmadan sistem çalışmaz
-- Tüm değişiklikler activity log'da görünür
-- Hatırlatmalar dakika başlarında kontrol edilir
-- Timezone ayarları Türkiye'ye göre yapılandırıldı 
+- System won't work without backend and MongoDB running
+- All changes appear in activity log
+- Reminders are checked at the start of minutes
+- Timezone settings configured for Turkey 
