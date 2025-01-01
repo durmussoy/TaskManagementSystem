@@ -79,6 +79,8 @@ const getStatusColor = (status) => {
       return 'primary.main';
     case 'pending':
       return 'warning.main';
+    case 'remind':
+      return 'warning.main';
     default:
       return 'primary.main';
   }
@@ -94,10 +96,15 @@ const getStatusText = (status) => {
       return 'New';
     case 'pending':
       return 'Pending';
+    case 'remind':
+      return 'Reminder';
     default:
       return 'New';
   }
 };
+
+// Notification sound - sadece bir ses dosyası
+const notificationSound = '/sounds/bell.wav';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -125,6 +132,7 @@ const Dashboard = () => {
   const [taskToDelete, setTaskToDelete] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const audioRef = React.useRef(new Audio(notificationSound));
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -180,13 +188,13 @@ const Dashboard = () => {
     try {
       const taskData = {
         ...newTask,
-        status: 'new'  // Yeni oluşturulan task'lar için status
+        status: 'new'
       };
       const response = await axios.post('/tasks', taskData);
       setIsModalOpen(false);
       setNewTask({ title: '', description: '', dueDateTime: '', reminderDateTime: '' });
       fetchTasks();
-      addEvent('create', `New task created: "${response.data.title}"`, response.data);
+      addEvent('create', `Task "${response.data.title}" has been created`, response.data);
     } catch (error) {
       console.error('Error creating task:', error);
       if (error.response?.status === 401) {
@@ -224,44 +232,33 @@ const Dashboard = () => {
   // Handle task update
   const handleUpdateTask = async () => {
     if (!editedTask) return;
-
     try {
       const updatedTask = {
         ...editedTask,
         dueDateTime: new Date(editedTask.dueDateTime).toISOString(),
         reminderDateTime: new Date(editedTask.reminderDateTime).toISOString()
       };
-
       const response = await axios.put(`/tasks/${editedTask._id}`, updatedTask);
-      
       setTasks(prevTasks => prevTasks.map(task => 
         task._id === editedTask._id ? response.data : task
       ));
-      
       setSelectedTask(response.data);
       setIsEditing(false);
       setEditedTask(null);
-
-      addEvent('update', `Task updated: "${response.data.title}"`, response.data);
+      addEvent('update', `Task "${response.data.title}" has been updated`, response.data);
     } catch (error) {
       console.error('Error updating task:', error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
     }
   };
 
   // Handle task delete
   const handleDeleteTask = async (taskId, taskTitle) => {
     if (!taskId) return;
-
     try {
       await axios.delete(`/tasks/${taskId}`);
       setTasks(tasks.filter(task => task._id !== taskId));
       setSelectedTask(null);
-      addEvent('delete', `Task "${taskTitle}" deleted`, { _id: taskId, title: taskTitle });
+      addEvent('delete', `Task "${taskTitle}" has been deleted`, { _id: taskId, title: taskTitle });
     } catch (error) {
       console.error('Error deleting task:', error);
     }
@@ -269,65 +266,49 @@ const Dashboard = () => {
     setTaskToDelete(null);
   };
 
-  // Handle reminder actions
+  // Handle complete task
   const handleCompleteTask = async (task) => {
     if (!task) return;
-
     try {
       const response = await axios.put(`/tasks/${task._id}`, {
         ...task,
         status: 'completed',
         completed: true
       });
-
       setTasks(prevTasks => prevTasks.map(t => 
         task._id === t._id ? response.data : t
       ));
-
       if (selectedTask && selectedTask._id === task._id) {
         setSelectedTask(response.data);
         if (editedTask) {
           setEditedTask(response.data);
         }
       }
-
-      addEvent('complete', `Task "${task.title}" completed`, response.data);
-      
-      // Hatırlatma penceresini kapat
+      addEvent('complete', `Task "${task.title}" has been completed`, response.data);
       setReminderTask(null);
       setPostponeAnchorEl(null);
     } catch (error) {
       console.error('Error completing task:', error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        navigate('/login');
-      }
     }
   };
 
-  // Yeni fonksiyon: İptal etme işlemi
+  // Handle cancel task
   const handleCancelTask = async (task) => {
     try {
       const response = await axios.put(`/tasks/${task._id}`, {
         ...task,
         status: 'cancelled'
       });
-
       setTasks(prevTasks => prevTasks.map(t => 
         t._id === task._id ? response.data : t
       ));
-
       if (selectedTask && selectedTask._id === task._id) {
         setSelectedTask(response.data);
         if (editedTask) {
           setEditedTask(response.data);
         }
       }
-
-      addEvent('cancel', `Task "${task.title}" cancelled`, response.data);
-      
-      // Eğer hatırlatma penceresi açıksa kapat
+      addEvent('cancel', `Task "${task.title}" has been cancelled`, response.data);
       if (reminderTask && reminderTask._id === task._id) {
         setReminderTask(null);
         setPostponeAnchorEl(null);
@@ -342,54 +323,63 @@ const Dashboard = () => {
     const checkReminders = async () => {
       if (!tasks.length) return;
 
-      const now = roundToMinute(new Date());
-      const sortedTasks = [...tasks].sort((a, b) => 
-        new Date(a.reminderDateTime) - new Date(b.reminderDateTime)
-      );
+      const now = new Date();
+      const currentMinute = now.getMinutes();
+      const currentSecond = now.getSeconds();
 
-      for (const task of sortedTasks) {
-        if (!task.completed && 
+      // Her dakikanın başında kontrol et
+      if (currentSecond !== 0) {
+        const timeUntilNextMinute = (60 - currentSecond) * 1000;
+        setTimeout(checkReminders, timeUntilNextMinute);
+        return;
+      }
+
+      console.log('Checking reminders at:', now.toLocaleTimeString());
+
+      for (const task of tasks) {
+        if (task.reminderDateTime && 
             task.status !== 'completed' &&
             task.status !== 'cancelled' &&
-            task.status !== 'pending' &&
-            task.reminderDateTime) {
-          const reminderTime = roundToMinute(new Date(task.reminderDateTime));
-          if (reminderTime.getTime() <= now.getTime()) {
+            task.status !== 'remind') {
+          
+          const reminderTime = new Date(task.reminderDateTime);
+          
+          // Sadece dakika ve saat kontrolü yap
+          if (reminderTime.getHours() === now.getHours() && 
+              reminderTime.getMinutes() === now.getMinutes()) {
+            console.log('Reminder triggered for task:', task.title);
             try {
               const response = await axios.put(`/tasks/${task._id}`, {
                 ...task,
-                status: 'pending'
+                status: 'remind'
               });
 
               setTasks(prevTasks => prevTasks.map(t => 
                 t._id === task._id ? response.data : t
               ));
 
-              addEvent('pending', `Task "${task.title}" is now pending`, response.data);
+              // Play notification sound
+              audioRef.current.play().catch(error => 
+                console.error('Error playing sound:', error)
+              );
+
+              // Add event to Activity Log
+              addEvent('reminder', `Task "${task.title}" needs attention now!`, response.data);
+              
+              console.log('Reminder processed successfully');
             } catch (error) {
-              console.error('Error marking task as pending:', error);
+              console.error('Error processing reminder:', error);
             }
           }
         }
       }
     };
 
-    // Calculate milliseconds until next minute
-    const now = new Date();
-    const delay = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
-
-    // Initial check
+    // İlk kontrol
     checkReminders();
 
-    // Set interval to run at the start of each minute
-    const timeout = setTimeout(() => {
-      checkReminders();
-      // After first execution, run every minute
-      const interval = setInterval(checkReminders, 60000);
-      return () => clearInterval(interval);
-    }, delay);
-
-    return () => clearTimeout(timeout);
+    // Component unmount olduğunda interval'i temizle
+    return () => {};
   }, [tasks]);
 
   const handleCancelReminder = () => {
@@ -412,29 +402,27 @@ const Dashboard = () => {
       const taskToPostpone = reminderTask;
       const newReminderDate = roundToMinute(new Date());
       newReminderDate.setMinutes(newReminderDate.getMinutes() + minutes);
-
       const updatedTask = {
         ...taskToPostpone,
+        status: 'pending',
         reminderDateTime: newReminderDate.toISOString()
       };
-
       setReminderTask(null);
       setPostponeAnchorEl(null);
-
       const response = await axios.put(`/tasks/${taskToPostpone._id}`, updatedTask);
-      
       setTasks(prevTasks => prevTasks.map(task => 
         task._id === taskToPostpone._id ? response.data : task
       ));
-
       if (selectedTask && selectedTask._id === taskToPostpone._id) {
         setSelectedTask(response.data);
         if (editedTask) {
           setEditedTask(response.data);
         }
       }
-
-      addEvent('postpone', `Task "${taskToPostpone.title}" postponed by ${minutes} minutes`, response.data);
+      const timeText = minutes === 60 ? "1 hour" : 
+                      minutes === 1440 ? "24 hours" : 
+                      `${minutes} minutes`;
+      addEvent('postpone', `Task "${taskToPostpone.title}" has been postponed by ${timeText}`, response.data);
     } catch (error) {
       console.error('Error postponing task:', error);
     }
@@ -445,10 +433,16 @@ const Dashboard = () => {
       try {
         const response = await axios.put(`/tasks/${reminderTask._id}`, {
           ...reminderTask,
+          status: 'pending',
           reminderDateTime: new Date(customPostponeDate).toISOString()
         });
-
-        addEvent('postpone', `Task "${reminderTask.title}" postponed to custom date`, response.data);
+        const formattedDate = new Date(customPostponeDate).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        addEvent('postpone', `Task "${reminderTask.title}" has been postponed to ${formattedDate}`, response.data);
         setReminderTask(null);
         setPostponeAnchorEl(null);
         setCustomPostponeDate('');
@@ -488,6 +482,8 @@ const Dashboard = () => {
         return <ScheduleIcon color="warning" />;
       case 'delete':
         return <DeleteIcon color="error" />;
+      case 'update':
+        return <EditIcon color="info" />;
       default:
         return <EventNoteIcon />;
     }
@@ -496,27 +492,24 @@ const Dashboard = () => {
   // Pending task işleme fonksiyonunu ekleyelim
   const handlePendingTask = async (task) => {
     if (!task) return;
-    
     try {
       const response = await axios.put(`/tasks/${task._id}`, {
         ...task,
         status: 'pending'
       });
-
       setTasks(prevTasks => prevTasks.map(t => 
         t._id === task._id ? response.data : t
       ));
-
       setReminderTask(null);
       setPostponeAnchorEl(null);
-      addEvent('pending', `Task "${task.title}" marked as pending`, response.data);
+      addEvent('pending', `Task "${task.title}" is now pending`, response.data);
     } catch (error) {
       console.error('Error marking task as pending:', error);
     }
   };
 
-  // Task kartına tıklandığında status'ü pending'e çevir
-  const handleTaskClick = async (task, isPending) => {
+  // Task kartına tıklandığında
+  const handleTaskClick = async (task, isReminder) => {
     if (task.status === 'new') {
       try {
         const response = await axios.put(`/tasks/${task._id}`, {
@@ -531,7 +524,7 @@ const Dashboard = () => {
       }
     }
     
-    if (isPending) {
+    if (isReminder) {
       setReminderTask(task);
     } else {
       setSelectedTask(task);
@@ -542,11 +535,22 @@ const Dashboard = () => {
     setDrawerOpen(!drawerOpen);
   };
 
+  // Play notification sound - basitleştirilmiş versiyon
+  const playNotificationSound = () => {
+    audioRef.current.play().catch(error => console.error('Error playing sound:', error));
+  };
+
   const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, onClick: () => setStatusFilter('all') },
     { text: 'Tools', icon: <SettingsIcon />, onClick: () => {} },
     { text: 'User Panel', icon: <PersonIcon />, onClick: () => {} },
   ];
+
+  // Reminder Dialog'da X'e tıklandığında
+  const handleCloseReminder = () => {
+    setReminderTask(null);
+    setPostponeAnchorEl(null);
+  };
 
   return (
     <Box sx={{ display: 'flex' }}>
@@ -561,26 +565,32 @@ const Dashboard = () => {
             <FilterListIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Task Management System
+            Task Remainder
           </Typography>
-          <IconButton color="inherit" onClick={() => setIsModalOpen(true)}>
-            <AddIcon />
-          </IconButton>
-          <IconButton color="inherit">
-            <Badge badgeContent={tasks.filter(task => task.status === 'pending').length} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-          <IconButton color="inherit" onClick={handleLogout}>
-            <LogoutIcon />
-          </IconButton>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="subtitle1">
+              {currentTime.toLocaleTimeString('tr-TR')}
+            </Typography>
+            
+            <Typography variant="subtitle1">
+              {user?.name || 'Ad Soyad'}
+            </Typography>
+
+            <Tooltip title="Çıkış Yap">
+              <IconButton color="inherit" onClick={handleLogout}>
+                <LogoutIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Toolbar>
       </AppBar>
 
+      {/* Sol Menü */}
       <Drawer
         variant="permanent"
         sx={{
-          width: drawerOpen ? drawerWidth : miniDrawerWidth,
+          width: miniDrawerWidth,
           flexShrink: 0,
           '& .MuiDrawer-paper': {
             width: drawerOpen ? drawerWidth : miniDrawerWidth,
@@ -617,36 +627,71 @@ const Dashboard = () => {
           <Divider sx={{ my: 2 }} />
           <List>
             {menuItems.map((item) => (
-              <ListItem
-                button
-                key={item.text}
-                onClick={item.onClick}
-                sx={{
-                  borderRadius: drawerOpen ? '0 20px 20px 0' : '50%',
-                  mr: drawerOpen ? 2 : 'auto',
-                  ml: drawerOpen ? 0 : 1,
-                  mb: 1,
-                  width: drawerOpen ? 'auto' : '45px',
-                  height: drawerOpen ? 'auto' : '45px',
-                  justifyContent: 'center',
-                  '&:hover': {
-                    backgroundColor: 'primary.light',
-                    '& .MuiListItemIcon-root, & .MuiListItemText-primary': {
-                      color: 'white',
+              <React.Fragment key={item.text}>
+                <ListItem
+                  button
+                  onClick={item.onClick}
+                  sx={{
+                    borderRadius: drawerOpen ? '0 20px 20px 0' : '50%',
+                    mr: drawerOpen ? 2 : 'auto',
+                    ml: drawerOpen ? 0 : 1,
+                    mb: 1,
+                    width: drawerOpen ? 'auto' : '45px',
+                    height: drawerOpen ? 'auto' : '45px',
+                    justifyContent: 'center',
+                    '&:hover': {
+                      backgroundColor: 'primary.light',
+                      '& .MuiListItemIcon-root, & .MuiListItemText-primary': {
+                        color: 'white',
+                      },
                     },
-                  },
-                }}
-              >
-                <ListItemIcon 
-                  sx={{ 
-                    color: 'primary.main',
-                    minWidth: drawerOpen ? 56 : 'auto',
-                    justifyContent: 'center'
                   }}
                 >
-                  {item.icon}
+                  <ListItemIcon 
+                    sx={{ 
+                      color: 'primary.main',
+                      minWidth: drawerOpen ? 56 : 'auto',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  {drawerOpen && <ListItemText primary={item.text} />}
+                </ListItem>
+              </React.Fragment>
+            ))}
+          </List>
+        </Box>
+      </Drawer>
+
+      {/* Sağ Activity Log */}
+      <Drawer
+        variant="permanent"
+        anchor="right"
+        sx={{
+          width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        <Toolbar />
+        <Box sx={{ overflow: 'auto', mt: 2 }}>
+          <Typography variant="h6" sx={{ px: 2, mb: 2 }}>
+            Activity Log
+          </Typography>
+          <List>
+            {events.map((event, index) => (
+              <ListItem key={index}>
+                <ListItemIcon>
+                  {getEventIcon(event.type)}
                 </ListItemIcon>
-                {drawerOpen && <ListItemText primary={item.text} />}
+                <ListItemText
+                  primary={event.message}
+                  secondary={formatDateTime(event.timestamp)}
+                />
               </ListItem>
             ))}
           </List>
@@ -657,11 +702,8 @@ const Dashboard = () => {
         flexGrow: 1, 
         p: 3,
         marginLeft: `${miniDrawerWidth}px`,
-        width: `calc(100% - ${drawerOpen ? drawerWidth : miniDrawerWidth}px)`,
-        transition: theme => theme.transitions.create(['width', 'margin'], {
-          easing: theme.transitions.easing.sharp,
-          duration: theme.transitions.duration.enteringScreen,
-        }),
+        marginRight: `${drawerWidth}px`,
+        width: `calc(100% - ${drawerWidth + miniDrawerWidth}px)`,
       }}>
         <Toolbar />
         <Container>
@@ -737,11 +779,7 @@ const Dashboard = () => {
                 {tasks
                   .filter(task => statusFilter === 'all' || task.status === statusFilter)
                   .map((task) => {
-                  const isPending = !task.completed && 
-                                   task.status !== 'completed' && 
-                                   task.status !== 'cancelled' && 
-                                   task.reminderDateTime && 
-                                   new Date(task.reminderDateTime) <= new Date();
+                  const isReminder = task.status === 'remind';
                   
                   return (
                     <Grid item key={task._id}>
@@ -752,7 +790,7 @@ const Dashboard = () => {
                           borderLeftColor: getStatusColor(task.status || 'new'),
                           position: 'relative',
                           opacity: task.status === 'completed' || task.status === 'cancelled' ? 0.7 : 1,
-                          animation: isPending ? 'pulse 2s infinite' : 'none',
+                          animation: isReminder ? 'pulse 2s infinite' : 'none',
                           '@keyframes pulse': {
                             '0%': {
                               boxShadow: '0 0 0 0 rgba(255, 152, 0, 0.4)'
@@ -765,7 +803,7 @@ const Dashboard = () => {
                             }
                           }
                         }}
-                        onClick={() => handleTaskClick(task, isPending)}
+                        onClick={() => handleTaskClick(task, isReminder)}
                       >
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
                           <Typography 
@@ -781,7 +819,7 @@ const Dashboard = () => {
                             }}
                           >
                             {task.title}
-                            {isPending && (
+                            {isReminder && (
                               <Badge 
                                 color="warning" 
                                 variant="dot"
@@ -1137,11 +1175,7 @@ const Dashboard = () => {
                 open={!!reminderTask}
                 maxWidth="sm"
                 fullWidth
-                onClose={(event, reason) => {
-                  if (reason === 'backdropClick' && reminderTask) {
-                    handlePendingTask(reminderTask);
-                  }
-                }}
+                onClose={handleCloseReminder}
               >
                 <DialogTitle sx={{ pr: 6 }}>
                   Task Reminder
@@ -1174,13 +1208,7 @@ const Dashboard = () => {
                         <InfoIcon fontSize="small" color="action" />
                       </IconButton>
                     </Tooltip>
-                    <IconButton
-                      onClick={() => {
-                        if (reminderTask) {
-                          handlePendingTask(reminderTask);
-                        }
-                      }}
-                    >
+                    <IconButton onClick={handleCloseReminder}>
                       <CloseIcon />
                     </IconButton>
                   </Box>
@@ -1254,6 +1282,7 @@ const Dashboard = () => {
                 open={Boolean(postponeAnchorEl)}
                 onClose={handlePostponeClose}
               >
+                <MenuItem onClick={() => handlePostpone(1)}>1 minute</MenuItem>
                 <MenuItem onClick={() => handlePostpone(5)}>5 minutes</MenuItem>
                 <MenuItem onClick={() => handlePostpone(10)}>10 minutes</MenuItem>
                 <MenuItem onClick={() => handlePostpone(15)}>15 minutes</MenuItem>
