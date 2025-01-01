@@ -133,6 +133,7 @@ const Dashboard = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const audioRef = React.useRef(new Audio(notificationSound));
+  const [viewMode, setViewMode] = useState('list'); // 'list' veya 'kanban'
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -214,19 +215,62 @@ const Dashboard = () => {
   // Task card style
   const taskCardStyle = {
     padding: '16px',
-    minHeight: '150px',
-    maxHeight: '300px',
+    height: '200px',
     width: '250px',
     display: 'flex',
     flexDirection: 'column',
     cursor: 'pointer',
     transition: 'all 0.3s ease-in-out',
-    '&:hover': {
-      transform: 'scale(1.02)',
-      boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-    },
-    gap: '8px',
+    marginBottom: '16px',
     backgroundColor: '#fff',
+    overflow: 'hidden',
+    gap: '8px',
+    '& .task-title': {
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      maxWidth: '100%',
+      fontWeight: 'bold',
+      marginBottom: '4px',
+    },
+    '& .task-description': {
+      overflow: 'hidden',
+      display: '-webkit-box',
+      WebkitLineClamp: '2',
+      WebkitBoxOrient: 'vertical',
+      textOverflow: 'ellipsis',
+      lineHeight: '1.2em',
+      maxHeight: '2.4em',
+    },
+  };
+
+  // Kanban görünümü için kolon stili
+  const columnStyle = {
+    padding: '16px',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '8px',
+    minHeight: '500px',
+    width: '300px',
+    marginRight: '16px',
+  };
+
+  // Activity Log stili
+  const activityLogStyle = {
+    position: 'fixed',
+    right: 0,
+    top: 64,
+    width: '320px',
+    height: 'calc(100vh - 64px)',
+    backgroundColor: '#fff',
+    borderLeft: '1px solid #e0e0e0',
+    padding: '16px',
+    overflowY: 'auto',
+  };
+
+  // Ana içerik alanı stili
+  const mainContentStyle = {
+    marginRight: '320px', // Activity Log genişliği kadar sağdan boşluk
+    padding: '24px',
   };
 
   // Handle task update
@@ -569,6 +613,16 @@ const Dashboard = () => {
           </Typography>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Button
+              variant="contained"
+              color="info"
+              onClick={() => setViewMode(viewMode === 'list' ? 'kanban' : 'list')}
+              size="small"
+              sx={{ textTransform: 'none' }}
+            >
+              {viewMode === 'list' ? 'Kanban Görünümü' : 'Liste Görünümü'}
+            </Button>
+
             <Typography variant="subtitle1">
               {currentTime.toLocaleTimeString('tr-TR')}
             </Typography>
@@ -590,8 +644,7 @@ const Dashboard = () => {
       <Drawer
         variant="permanent"
         sx={{
-          width: miniDrawerWidth,
-          flexShrink: 0,
+          width: drawerOpen ? drawerWidth : miniDrawerWidth,
           '& .MuiDrawer-paper': {
             width: drawerOpen ? drawerWidth : miniDrawerWidth,
             boxSizing: 'border-box',
@@ -602,9 +655,13 @@ const Dashboard = () => {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
+            position: 'fixed',
+            height: '100%',
+            top: 0,
+            left: 0,
           },
         }}
-        open={true}
+        open={drawerOpen}
       >
         <Toolbar />
         <Box sx={{ overflow: 'auto', mt: 2 }}>
@@ -664,51 +721,20 @@ const Dashboard = () => {
         </Box>
       </Drawer>
 
-      {/* Sağ Activity Log */}
-      <Drawer
-        variant="permanent"
-        anchor="right"
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-          },
-        }}
-      >
-        <Toolbar />
-        <Box sx={{ overflow: 'auto', mt: 2 }}>
-          <Typography variant="h6" sx={{ px: 2, mb: 2 }}>
-            Activity Log
-          </Typography>
-          <List>
-            {events.map((event, index) => (
-              <ListItem key={index}>
-                <ListItemIcon>
-                  {getEventIcon(event.type)}
-                </ListItemIcon>
-                <ListItemText
-                  primary={event.message}
-                  secondary={formatDateTime(event.timestamp)}
-                />
-              </ListItem>
-            ))}
-          </List>
-        </Box>
-      </Drawer>
-
       <Box component="main" sx={{ 
-        flexGrow: 1, 
-        p: 3,
-        marginLeft: `${miniDrawerWidth}px`,
-        marginRight: `${drawerWidth}px`,
-        width: `calc(100% - ${drawerWidth + miniDrawerWidth}px)`,
+        position: 'relative',
+        ml: `${miniDrawerWidth}px`,
+        mr: `${miniDrawerWidth}px`,
+        transition: theme => theme.transitions.create(['margin', 'width'], {
+          easing: theme.transitions.easing.sharp,
+          duration: theme.transitions.duration.enteringScreen,
+        }),
+        width: `calc(100% - ${drawerOpen ? drawerWidth : miniDrawerWidth}px - ${miniDrawerWidth}px)`,
       }}>
         <Toolbar />
-        <Container>
+        <Box sx={{ p: 1 }}>
           {!isLoading ? (
-            <Box sx={{ my: 4 }}>
+            <Box sx={{ my: 1 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Typography variant="h4" component="h1">
                   Tasks
@@ -720,181 +746,318 @@ const Dashboard = () => {
                     <AddIcon />
                   </IconButton>
                 </Typography>
-                <Box sx={{ 
-                  display: 'flex', 
-                  justifyContent: 'flex-end',
-                  gap: 1,
-                  '& .MuiButton-root': {
-                    minWidth: '90px',
-                    height: '28px',
-                    textTransform: 'none',
-                    padding: '4px 10px',
-                    fontSize: '0.875rem',
-                    lineHeight: 1
-                  }
-                }}>
-                  <Button
-                    variant={statusFilter === 'all' ? 'contained' : 'outlined'}
-                    size="small"
-                    onClick={() => setStatusFilter('all')}
-                  >
-                    All
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'new' ? 'contained' : 'outlined'}
-                    size="small"
-                    onClick={() => setStatusFilter('new')}
-                    color="primary"
-                  >
-                    New
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'pending' ? 'contained' : 'outlined'}
-                    size="small"
-                    onClick={() => setStatusFilter('pending')}
-                    color="warning"
-                  >
-                    Pending
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'completed' ? 'contained' : 'outlined'}
-                    size="small"
-                    onClick={() => setStatusFilter('completed')}
-                    color="success"
-                  >
-                    Completed
-                  </Button>
-                  <Button
-                    variant={statusFilter === 'cancelled' ? 'contained' : 'outlined'}
-                    size="small"
-                    onClick={() => setStatusFilter('cancelled')}
-                    color="error"
-                  >
-                    Cancelled
-                  </Button>
-                </Box>
+                {viewMode === 'list' && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-end',
+                    gap: 1,
+                    '& .MuiButton-root': {
+                      minWidth: '90px',
+                      height: '28px',
+                      textTransform: 'none',
+                      padding: '4px 10px',
+                      fontSize: '0.875rem',
+                      lineHeight: 1
+                    }
+                  }}>
+                    <Button
+                      variant={statusFilter === 'all' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => setStatusFilter('all')}
+                    >
+                      All
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'new' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => setStatusFilter('new')}
+                      color="primary"
+                    >
+                      New ({tasks.filter(t => t.status === 'new').length})
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'pending' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => setStatusFilter('pending')}
+                      color="warning"
+                    >
+                      Pending ({tasks.filter(t => t.status === 'pending').length})
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'remind' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => setStatusFilter('remind')}
+                      color="warning"
+                      sx={{ borderColor: 'warning.main', color: statusFilter === 'remind' ? 'white' : 'warning.main' }}
+                    >
+                      Remind ({tasks.filter(t => t.status === 'remind').length})
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'completed' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => setStatusFilter('completed')}
+                      color="success"
+                    >
+                      Completed ({tasks.filter(t => t.status === 'completed').length})
+                    </Button>
+                    <Button
+                      variant={statusFilter === 'cancelled' ? 'contained' : 'outlined'}
+                      size="small"
+                      onClick={() => setStatusFilter('cancelled')}
+                      color="error"
+                    >
+                      Cancelled ({tasks.filter(t => t.status === 'cancelled').length})
+                    </Button>
+                  </Box>
+                )}
               </Box>
 
-              <Grid container spacing={3}>
-                {tasks
-                  .filter(task => statusFilter === 'all' || task.status === statusFilter)
-                  .map((task) => {
-                  const isReminder = task.status === 'remind';
-                  
-                  return (
-                    <Grid item key={task._id}>
-                      <Paper
-                        sx={{
-                          ...taskCardStyle,
-                          borderLeft: '4px solid',
-                          borderLeftColor: getStatusColor(task.status || 'new'),
-                          position: 'relative',
-                          opacity: task.status === 'completed' || task.status === 'cancelled' ? 0.7 : 1,
-                          animation: isReminder ? 'pulse 2s infinite' : 'none',
-                          '@keyframes pulse': {
-                            '0%': {
-                              boxShadow: '0 0 0 0 rgba(255, 152, 0, 0.4)'
+              {viewMode === 'list' ? (
+                // Liste görünümü
+                <Grid container spacing={2}>
+                  {tasks
+                    .filter(task => statusFilter === 'all' || task.status === statusFilter)
+                    .map((task) => (
+                      <Grid item key={task._id}>
+                        <Paper
+                          sx={{
+                            ...taskCardStyle,
+                            borderLeft: '4px solid',
+                            borderLeftColor: getStatusColor(task.status || 'new'),
+                            borderTop: '1px solid rgba(0, 0, 0, 0.12)',
+                            borderRight: '1px solid rgba(0, 0, 0, 0.12)',
+                            borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                            position: 'relative',
+                            opacity: task.status === 'completed' || task.status === 'cancelled' ? 0.7 : 1,
+                            boxShadow: task.status === 'remind' ? '0 0 15px rgba(255, 152, 0, 0.5)' : 'none',
+                            transition: 'all 0.3s ease-in-out',
+                            '&:hover': {
+                              transform: 'scale(1.02)',
+                              boxShadow: task.status === 'remind' 
+                                ? '0 8px 16px rgba(0,0,0,0.1), 0 0 15px rgba(255, 152, 0, 0.5)'
+                                : '0 8px 16px rgba(0,0,0,0.1)',
                             },
-                            '70%': {
-                              boxShadow: '0 0 0 10px rgba(255, 152, 0, 0)'
-                            },
-                            '100%': {
-                              boxShadow: '0 0 0 0 rgba(255, 152, 0, 0)'
-                            }
-                          }
-                        }}
-                        onClick={() => handleTaskClick(task, isReminder)}
-                      >
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                          }}
+                          onClick={() => handleTaskClick(task, task.status === 'remind')}
+                        >
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                            <Typography 
+                              variant="h6" 
+                              sx={{ 
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                display: '-webkit-box',
+                                WebkitLineClamp: '1',
+                                WebkitBoxOrient: 'vertical',
+                                lineHeight: '1.4em',
+                                maxHeight: '2.8em'
+                              }}
+                            >
+                              {task.title}
+                              {task.status === 'remind' && (
+                                <Badge 
+                                  color="warning" 
+                                  variant="dot"
+                                  sx={{ 
+                                    '& .MuiBadge-dot': {
+                                      right: -4,
+                                      top: 4,
+                                    }
+                                  }}
+                                />
+                              )}
+                            </Typography>
+                          </Box>
                           <Typography 
-                            variant="h6" 
-                            sx={{ 
+                            variant="body2" 
+                            color="text.secondary"
+                            sx={{
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               display: '-webkit-box',
-                              WebkitLineClamp: 2,
+                              WebkitLineClamp: 3,
                               WebkitBoxOrient: 'vertical',
-                              lineHeight: '1.4em',
-                              maxHeight: '2.8em'
                             }}
                           >
-                            {task.title}
-                            {isReminder && (
-                              <Badge 
-                                color="warning" 
-                                variant="dot"
-                                sx={{ 
-                                  '& .MuiBadge-dot': {
-                                    right: -4,
-                                    top: 4,
-                                  }
-                                }}
-                              />
-                            )}
+                            {task.description}
                           </Typography>
-                          <Typography 
-                            variant="caption" 
-                            sx={{ 
-                              color: getStatusColor(task.status || 'new'),
-                              fontWeight: 'medium',
-                              ml: 1,
-                              whiteSpace: 'nowrap'
-                            }}
-                          >
-                            {getStatusText(task.status || 'new')}
-                          </Typography>
-                        </Box>
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary"
-                          sx={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            display: '-webkit-box',
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: 'vertical',
-                          }}
-                        >
-                          {task.description}
-                        </Typography>
-                        <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                          <Typography 
-                            variant="caption" 
-                            color={task.remainingTime === 'Overdue' ? 'error.main' : 'text.secondary'} 
-                            display="block"
-                            sx={{ fontWeight: 'medium' }}
-                          >
-                            {task.remainingTime}
-                          </Typography>
-                          <Tooltip
-                            title={
-                              <Box>
-                                <Typography variant="body2">Assigned to: {task.assignedTo?.name || 'Unassigned'}</Typography>
-                                <Typography variant="body2">Created by: {task.createdBy?.name}</Typography>
-                                <Typography variant="body2">Created: {formatDateTime(task.createdAt)}</Typography>
-                                <Typography variant="body2">Due: {formatDateTime(task.dueDateTime)}</Typography>
-                                <Typography variant="body2">Reminder: {formatDateTime(task.reminderDateTime)}</Typography>
-                                <Typography variant="body2">Status: {getStatusText(task.status || 'new')}</Typography>
-                              </Box>
-                            }
-                            placement="top-start"
-                          >
-                            <IconButton
-                              size="small"
-                              sx={{ 
-                                '&:hover': { backgroundColor: 'transparent' }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
+                          <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                            <Typography 
+                              variant="caption" 
+                              color={task.remainingTime === 'Overdue' && !['completed', 'cancelled'].includes(task.status) ? 'error.main' : 'text.secondary'} 
+                              display="block"
+                              sx={{ fontWeight: 'medium' }}
                             >
-                              <InfoIcon fontSize="small" color="action" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </Paper>
-                    </Grid>
-                  );
-                })}
-              </Grid>
+                              {['completed', 'cancelled'].includes(task.status) ? formatDateTime(task.dueDateTime) : task.remainingTime}
+                            </Typography>
+                            <Tooltip
+                              title={
+                                <Box>
+                                  <Typography variant="body2">Assigned to: {task.assignedTo?.name || 'Unassigned'}</Typography>
+                                  <Typography variant="body2">Created by: {task.createdBy?.name}</Typography>
+                                  <Typography variant="body2">Created: {formatDateTime(task.createdAt)}</Typography>
+                                  <Typography variant="body2">Due: {formatDateTime(task.dueDateTime)}</Typography>
+                                  <Typography variant="body2">Reminder: {formatDateTime(task.reminderDateTime)}</Typography>
+                                  <Typography variant="body2">Status: {getStatusText(task.status || 'new')}</Typography>
+                                </Box>
+                              }
+                              placement="top-start"
+                            >
+                              <IconButton
+                                size="small"
+                                sx={{ 
+                                  '&:hover': { backgroundColor: 'transparent' }
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <InfoIcon fontSize="small" color="action" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </Paper>
+                      </Grid>
+                    ))}
+                </Grid>
+              ) : (
+                // Kanban görünümü
+                <Box sx={{ 
+                  display: 'flex', 
+                  gap: 2, 
+                  overflowX: 'auto', 
+                  pb: 2,
+                  width: '100%',
+                  '& > .MuiPaper-root': {
+                    flex: '1 1 0', // flex-grow: 1, flex-shrink: 1, flex-basis: 0
+                    minWidth: '250px', // minimum genişlik
+                    maxWidth: '350px', // maksimum genişlik
+                    backgroundColor: '#fff',
+                    p: 2,
+                    borderRadius: 2,
+                    boxShadow: '0 0 10px rgba(0,0,0,0.05)',
+                    height: 'fit-content'
+                  }
+                }}>
+                  {['new', 'pending', 'remind', 'completed', 'cancelled'].map((status) => (
+                    <Paper key={status} elevation={0}>
+                      <Typography variant="h6" sx={{ mb: 2, color: getStatusColor(status) }}>
+                        {getStatusText(status)} ({tasks.filter(t => t.status === status).length})
+                      </Typography>
+                      <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 2,
+                        minHeight: '50px' // Boş kolonlar için minimum yükseklik
+                      }}>
+                        {tasks
+                          .filter(task => task.status === status)
+                          .map(task => (
+                            <Paper
+                              key={task._id}
+                              sx={{
+                                ...taskCardStyle,
+                                width: '100%',
+                                minWidth: 'unset',
+                                maxWidth: '100%',
+                                borderLeft: '4px solid',
+                                borderLeftColor: getStatusColor(task.status || 'new'),
+                                borderTop: '1px solid rgba(0, 0, 0, 0.12)',
+                                borderRight: '1px solid rgba(0, 0, 0, 0.12)',
+                                borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                                position: 'relative',
+                                opacity: task.status === 'completed' || task.status === 'cancelled' ? 0.7 : 1,
+                                backgroundColor: '#fff',
+                                boxShadow: task.status === 'remind' ? '0 0 15px rgba(255, 152, 0, 0.5)' : 'none',
+                                transition: 'all 0.3s ease-in-out',
+                                '&:hover': {
+                                  transform: 'scale(1.02)',
+                                  boxShadow: task.status === 'remind' 
+                                    ? '0 8px 16px rgba(0,0,0,0.1), 0 0 15px rgba(255, 152, 0, 0.5)'
+                                    : '0 8px 16px rgba(0,0,0,0.1)',
+                                },
+                              }}
+                              onClick={() => handleTaskClick(task, task.status === 'remind')}
+                            >
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                <Typography 
+                                  variant="h6" 
+                                  sx={{ 
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    lineHeight: '1.4em',
+                                    maxHeight: '2.8em'
+                                  }}
+                                >
+                                  {task.title}
+                                  {task.status === 'remind' && (
+                                    <Badge 
+                                      color="warning" 
+                                      variant="dot"
+                                      sx={{ 
+                                        '& .MuiBadge-dot': {
+                                          right: -4,
+                                          top: 4,
+                                        }
+                                      }}
+                                    />
+                                  )}
+                                </Typography>
+                              </Box>
+                              <Typography 
+                                variant="body2" 
+                                color="text.secondary"
+                                sx={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical',
+                                }}
+                              >
+                                {task.description}
+                              </Typography>
+                              <Box sx={{ mt: 'auto', pt: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                <Typography 
+                                  variant="caption" 
+                                  color={task.remainingTime === 'Overdue' && !['completed', 'cancelled'].includes(task.status) ? 'error.main' : 'text.secondary'} 
+                                  display="block"
+                                  sx={{ fontWeight: 'medium' }}
+                                >
+                                  {['completed', 'cancelled'].includes(task.status) ? formatDateTime(task.dueDateTime) : task.remainingTime}
+                                </Typography>
+                                <Tooltip
+                                  title={
+                                    <Box>
+                                      <Typography variant="body2">Assigned to: {task.assignedTo?.name || 'Unassigned'}</Typography>
+                                      <Typography variant="body2">Created by: {task.createdBy?.name}</Typography>
+                                      <Typography variant="body2">Created: {formatDateTime(task.createdAt)}</Typography>
+                                      <Typography variant="body2">Due: {formatDateTime(task.dueDateTime)}</Typography>
+                                      <Typography variant="body2">Reminder: {formatDateTime(task.reminderDateTime)}</Typography>
+                                      <Typography variant="body2">Status: {getStatusText(task.status || 'new')}</Typography>
+                                    </Box>
+                                  }
+                                  placement="top-start"
+                                >
+                                  <IconButton
+                                    size="small"
+                                    sx={{ 
+                                      '&:hover': { backgroundColor: 'transparent' }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <InfoIcon fontSize="small" color="action" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Box>
+                            </Paper>
+                          ))}
+                      </Box>
+                    </Paper>
+                  ))}
+                </Box>
+              )}
 
               {/* New Task Modal */}
               <Modal
@@ -1361,8 +1524,47 @@ const Dashboard = () => {
               <CircularProgress />
             </Box>
           )}
-        </Container>
+        </Box>
       </Box>
+
+      {/* Sağ Activity Log */}
+      <Drawer
+        variant="permanent"
+        anchor="right"
+        sx={{
+          width: drawerWidth,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            boxSizing: 'border-box',
+            position: 'fixed',
+            height: '100%',
+            top: 0,
+            right: 0,
+            borderLeft: '1px solid rgba(0, 0, 0, 0.12)',
+          },
+        }}
+      >
+        <Toolbar />
+        <Box sx={{ overflow: 'auto', mt: 2 }}>
+          <Typography variant="h6" sx={{ px: 2, mb: 2 }}>
+            Activity Log
+          </Typography>
+          <List>
+            {events.map((event, index) => (
+              <ListItem key={index}>
+                <ListItemIcon>
+                  {getEventIcon(event.type)}
+                </ListItemIcon>
+                <ListItemText
+                  primary={event.message}
+                  secondary={formatDateTime(event.timestamp)}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </Drawer>
     </Box>
   );
 };
