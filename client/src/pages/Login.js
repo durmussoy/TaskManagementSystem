@@ -7,19 +7,18 @@ import {
   Button,
   Typography,
   Box,
-  Stack,
+  Alert,
 } from '@mui/material';
-import axios from '../utils/axios';
+import axios from '../core/utils/axios';
 
 const Login = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    name: '',
   });
   const [error, setError] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -30,19 +29,44 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+
     try {
-      if (isRegister) {
-        await axios.post('/users/register', formData);
-        setError('');
-        setIsRegister(false);
-      } else {
-        const response = await axios.post('/users/login', formData);
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        navigate('/');
+      console.log('Login isteği gönderiliyor:', formData); // Debug için
+
+      const response = await axios.post('/users/login', formData);
+      console.log('Login response:', response); // Tüm response'u görelim
+      console.log('Login response data:', response.data); // Response data'yı görelim
+      console.log('Token:', response.data.token); // Token'ı görelim
+      console.log('User:', response.data.user); // User bilgisini görelim
+
+      if (!response.data.token) {
+        throw new Error('Token alınamadı');
       }
+
+      // Token ve kullanıcı bilgilerini kaydet
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.user));
+
+      // LocalStorage'a kaydedildi mi kontrol et
+      console.log('LocalStorage token:', localStorage.getItem('token'));
+      console.log('LocalStorage user:', localStorage.getItem('user'));
+
+      // Axios instance'ına token'ı ekle
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
+      console.log('Axios headers:', axios.defaults.headers.common['Authorization']); // Headers'ı kontrol et
+
+      navigate('/dashboard');
     } catch (error) {
-      setError(error.response?.data?.message || 'An error occurred');
+      console.error('Login error details:', error); // Detaylı hata bilgisi
+      if (error.response) {
+        console.error('Error response:', error.response);
+        console.error('Error data:', error.response.data);
+      }
+      setError(error.response?.data?.message || error.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,67 +80,61 @@ const Login = () => {
           alignItems: 'center',
         }}
       >
-        <Paper elevation={3} sx={{ padding: 4, width: '100%' }}>
-          <Typography component="h1" variant="h5" align="center" gutterBottom>
-            {isRegister ? 'Register' : 'Login'}
+        <Paper
+          elevation={3}
+          sx={{
+            padding: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: '100%',
+          }}
+        >
+          <Typography component="h1" variant="h5">
+            Sign in
           </Typography>
-          <form onSubmit={handleSubmit}>
+
+          {error && (
+            <Alert severity="error" sx={{ mt: 2, width: '100%' }}>
+              {error}
+            </Alert>
+          )}
+
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
             <TextField
               margin="normal"
               required
               fullWidth
+              id="username"
               label="Username"
               name="username"
+              autoComplete="username"
+              autoFocus
               value={formData.username}
               onChange={handleChange}
-              autoFocus
             />
-            {isRegister && (
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                label="Full Name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-              />
-            )}
             <TextField
               margin="normal"
               required
               fullWidth
-              label="Password"
               name="password"
+              label="Password"
               type="password"
+              id="password"
+              autoComplete="current-password"
               value={formData.password}
               onChange={handleChange}
             />
-            {error && (
-              <Typography color="error" align="center" sx={{ mt: 2 }}>
-                {error}
-              </Typography>
-            )}
-            <Stack spacing={2} sx={{ mt: 3 }}>
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-              >
-                {isRegister ? 'Register' : 'Login'}
-              </Button>
-              <Button
-                fullWidth
-                variant="outlined"
-                onClick={() => {
-                  setIsRegister(!isRegister);
-                  setError('');
-                }}
-              >
-                {isRegister ? 'Back to Login' : 'Create Account'}
-              </Button>
-            </Stack>
-          </form>
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              sx={{ mt: 3, mb: 2 }}
+              disabled={loading}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
+          </Box>
         </Paper>
       </Box>
     </Container>

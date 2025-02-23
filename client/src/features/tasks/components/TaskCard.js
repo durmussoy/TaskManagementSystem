@@ -1,8 +1,10 @@
-import React from 'react';
-import { Paper, Box, Typography, Badge, IconButton, Tooltip } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Paper, Box, Typography, Badge, IconButton, Tooltip, LinearProgress } from '@mui/material';
 import InfoIcon from '@mui/icons-material/Info';
 import { getStatusColor } from '../../../utils/statusUtils';
 import { formatDateTime } from '../../../utils/dateUtils';
+import { TaskService } from '../services/TaskService';
+import useMinuteTimer from '../../../hooks/useMinuteTimer';
 
 const taskCardStyle = {
   p: 1.5,
@@ -47,6 +49,52 @@ const taskCardStyle = {
 };
 
 const TaskCard = ({ task, onClick }) => {
+  const [remainingTime, setRemainingTime] = useState(task.remainingTime);
+  const minute = useMinuteTimer();
+  const subTaskProgress = TaskService.getSubTasksProgress(task);
+  const currentUserId = JSON.parse(localStorage.getItem('user')).id;
+  
+  // Kullanıcıya özel hatırlatma zamanını bul
+  const userReminderSetting = task.reminderSettings?.find(
+    setting => setting.userId === currentUserId
+  );
+
+  const reminderDateTime = userReminderSetting ? userReminderSetting.reminderDateTime : task.dueDateTime;
+
+  useEffect(() => {
+    // Kalan zamanı güncelle
+    const updateRemainingTime = () => {
+      if (userReminderSetting && userReminderSetting.reminderDateTime) {
+        const now = new Date();
+        const reminder = new Date(userReminderSetting.reminderDateTime);
+        const diff = reminder - now;
+
+        if (diff < 0) {
+          setRemainingTime('Reminder');
+          return;
+        }
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+        if (days > 0) {
+          setRemainingTime(`${days}d ${hours}h remaining`);
+        } else if (hours > 0) {
+          setRemainingTime(`${hours}h ${minutes}m remaining`);
+        } else if (minutes > 0) {
+          setRemainingTime(`${minutes}m remaining`);
+        } else {
+          setRemainingTime('in a minute');
+        }
+      } else {
+        setRemainingTime('No reminder set');
+      }
+    };
+
+    updateRemainingTime();
+  }, [userReminderSetting, minute]);
+
   return (
     <Paper
       sx={{
@@ -78,7 +126,7 @@ const TaskCard = ({ task, onClick }) => {
             display: '-webkit-box',
             WebkitLineClamp: '1',
             WebkitBoxOrient: 'vertical',
-            lineHeight: '1.4em',
+            lineHeight: '1.2em',
             maxHeight: '2.8em'
           }}
         >
@@ -97,19 +145,49 @@ const TaskCard = ({ task, onClick }) => {
           )}
         </Typography>
       </Box>
-      <Typography 
-        variant="body2" 
+
+      <Typography
+        variant="body2"
         color="text.secondary"
         sx={{
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           display: '-webkit-box',
-          WebkitLineClamp: 3,
+          WebkitLineClamp: '2',
           WebkitBoxOrient: 'vertical',
+          mb: 1,
+          fontSize: '0.875rem',
+          lineHeight: '1.3em',
+          height: '2.6em'
         }}
       >
         {task.description}
       </Typography>
+
+      {subTaskProgress.total > 0 && (
+        <Box sx={{ width: '100%', mb: 1 }}>
+          <LinearProgress
+            variant="determinate"
+            value={subTaskProgress.percentage}
+            sx={{
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: 'rgba(0,0,0,0.1)',
+              '& .MuiLinearProgress-bar': {
+                borderRadius: 2,
+              }
+            }}
+          />
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: 'block', mt: 0.5, fontSize: '0.75rem' }}
+          >
+            {subTaskProgress.completed}/{subTaskProgress.total} sub-tasks completed
+          </Typography>
+        </Box>
+      )}
+
       <Box sx={{ 
         mt: 'auto',
         pt: 1,
@@ -121,11 +199,11 @@ const TaskCard = ({ task, onClick }) => {
       }}>
         <Typography 
           variant="caption" 
-          color={task.remainingTime === 'Overdue' && !['completed', 'cancelled'].includes(task.status) ? 'error.main' : 'text.secondary'} 
+          color={remainingTime === 'Overdue' && !['completed', 'cancelled'].includes(task.status) ? 'error.main' : 'text.secondary'} 
           display="block"
           sx={{ fontWeight: 'medium' }}
         >
-          {['completed', 'cancelled'].includes(task.status) ? formatDateTime(task.dueDateTime) : task.remainingTime}
+          {['completed', 'cancelled'].includes(task.status) ? formatDateTime(task.updatedAt) : remainingTime}
         </Typography>
         <Tooltip
           title={
@@ -134,8 +212,13 @@ const TaskCard = ({ task, onClick }) => {
               <Typography variant="body2">Created by: {task.createdBy?.name}</Typography>
               <Typography variant="body2">Created: {formatDateTime(task.createdAt)}</Typography>
               <Typography variant="body2">Due: {formatDateTime(task.dueDateTime)}</Typography>
-              <Typography variant="body2">Reminder: {formatDateTime(task.reminderDateTime)}</Typography>
+              <Typography variant="body2">Reminder: {formatDateTime(reminderDateTime)}</Typography>
               <Typography variant="body2">Status: {task.status || 'new'}</Typography>
+              {subTaskProgress.total > 0 && (
+                <Typography variant="body2">
+                  Sub Tasks: {subTaskProgress.completed}/{subTaskProgress.total} (%{subTaskProgress.percentage})
+                </Typography>
+              )}
             </Box>
           }
           placement="top-start"

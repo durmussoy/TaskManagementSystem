@@ -22,6 +22,19 @@ export class TaskService {
             }
         }
 
+        // Alt görevler için validasyon
+        if (taskData.subTasks) {
+            const subTaskErrors = [];
+            taskData.subTasks.forEach((subTask, index) => {
+                if (!subTask.title?.trim()) {
+                    subTaskErrors[index] = 'Alt görev başlığı gereklidir';
+                }
+            });
+            if (subTaskErrors.length > 0) {
+                errors.subTasks = subTaskErrors;
+            }
+        }
+
         return {
             isValid: Object.keys(errors).length === 0,
             errors
@@ -78,5 +91,25 @@ export class TaskService {
         }
 
         return { status: 'normal', label: 'Normal' };
+    }
+
+    static getSubTasksProgress(task) {
+        if (!task.subTasks || task.subTasks.length === 0) {
+            return {
+                total: 0,
+                completed: 0,
+                percentage: 0
+            };
+        }
+
+        const total = task.subTasks.length;
+        const completed = task.subTasks.filter(st => st.isCompleted).length;
+        const percentage = Math.round((completed / total) * 100);
+
+        return {
+            total,
+            completed,
+            percentage
+        };
     }
 } 

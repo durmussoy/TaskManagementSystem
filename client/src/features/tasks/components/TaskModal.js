@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Paper,
@@ -11,7 +11,13 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Checkbox,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  ListItemSecondaryAction
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
@@ -23,6 +29,7 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import { formatDateTime, formatDateForInput } from '../../../utils/dateUtils';
 import { getStatusText } from '../../../utils/statusUtils';
 import PostponeMenu from './PostponeMenu';
+import useMinuteTimer from '../../../hooks/useMinuteTimer';
 
 const TaskModal = ({ 
   task, 
@@ -35,9 +42,67 @@ const TaskModal = ({
   onDelete
 }) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedTask, setEditedTask] = useState(null);
+  const [remainingTime, setRemainingTime] = useState('');
+  const minute = useMinuteTimer();
+  const [editedTask, setEditedTask] = useState({
+    title: '',
+    description: '',
+    dueDateTime: '',
+    reminderDateTime: '',
+    status: '',
+    subTasks: []
+  });
   const [postponeAnchorEl, setPostponeAnchorEl] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [newSubTask, setNewSubTask] = useState('');
+
+  useEffect(() => {
+    if (task) {
+      // Kullanıcıya özel hatırlatma zamanını bul
+      const userReminderSetting = task.reminderSettings?.find(
+        setting => setting.userId === JSON.parse(localStorage.getItem('user')).id
+      );
+
+      setEditedTask({
+        ...task,
+        reminderDateTime: userReminderSetting ? 
+          formatDateForInput(userReminderSetting.reminderDateTime) : 
+          formatDateForInput(task.dueDateTime)
+      });
+
+      // Kalan zamanı güncelle
+      const updateRemainingTime = () => {
+        if (userReminderSetting && userReminderSetting.reminderDateTime) {
+          const now = new Date();
+          const reminder = new Date(userReminderSetting.reminderDateTime);
+          const diff = reminder - now;
+
+          if (diff < 0) {
+            setRemainingTime('Reminder');
+            return;
+          }
+
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+          if (days > 0) {
+            setRemainingTime(`${days}d ${hours}h remaining`);
+          } else if (hours > 0) {
+            setRemainingTime(`${hours}h ${minutes}m remaining`);
+          } else if (minutes > 0) {
+            setRemainingTime(`${minutes}m remaining`);
+          } else {
+            setRemainingTime('in a minute');
+          }
+        } else {
+          setRemainingTime('No reminder set');
+        }
+      };
+
+      updateRemainingTime();
+    }
+  }, [task, minute]);
 
   const handleStartEdit = () => {
     setIsEditing(true);
@@ -69,6 +134,33 @@ const TaskModal = ({
     setShowDeleteConfirm(false);
   };
 
+  const handleSubTaskComplete = (index) => {
+    const updatedTask = { ...task };
+    updatedTask.subTasks[index].isCompleted = !updatedTask.subTasks[index].isCompleted;
+    onUpdate(updatedTask);
+  };
+
+  const handleSubTaskDelete = (index) => {
+    const updatedTask = { ...task };
+    updatedTask.subTasks.splice(index, 1);
+    onUpdate(updatedTask);
+  };
+
+  const handleAddSubTask = (e) => {
+    if (e.key === 'Enter' && newSubTask.trim()) {
+      const updatedTask = { ...task };
+      if (!updatedTask.subTasks) {
+        updatedTask.subTasks = [];
+      }
+      updatedTask.subTasks.push({
+        title: newSubTask.trim(),
+        isCompleted: false
+      });
+      onUpdate(updatedTask);
+      setNewSubTask('');
+    }
+  };
+
   return (
     <>
       <Modal open={open} onClose={handleClose}>
@@ -81,6 +173,8 @@ const TaskModal = ({
             width: '80%',
             maxWidth: 600,
             p: 4,
+            maxHeight: '90vh',
+            overflow: 'auto'
           }}
         >
           {task && (
@@ -132,7 +226,6 @@ const TaskModal = ({
               </Box>
               
               {!isEditing ? (
-                // View Mode
                 <>
                   <Typography variant="h5" gutterBottom>
                     {task?.title}
@@ -140,13 +233,138 @@ const TaskModal = ({
                   <Typography variant="body1" paragraph>
                     {task?.description}
                   </Typography>
+
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="h6" gutterBottom sx={{ mb: 1 }}>
+                      Sub Tasks
+                    </Typography>
+                    <List sx={{ py: 0 }}>
+                      {task?.subTasks?.map((subTask, index) => (
+                        <ListItem
+                          key={index}
+                          dense
+                          disableGutters
+                          sx={{
+                            borderRadius: 1,
+                            alignItems: 'center',
+                            px: 1.5,
+                            height: 'auto',
+                            '&:hover': {
+                              bgcolor: 'action.hover',
+                              '& .action-buttons': {
+                                opacity: 1,
+                              }
+                            },
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 4,
+                              height: 4,
+                              bgcolor: 'text.secondary',
+                              borderRadius: '50%',
+                              mr: 1,
+                              flexShrink: 0,
+                            }}
+                          />
+                          <ListItemText
+                            primary={subTask.title}
+                            sx={{
+                              m: 0,
+                              p: 0,
+                              minHeight: 'unset',
+                              '& .MuiTypography-root': {
+                                textDecoration: subTask.isCompleted ? 'line-through' : 'none',
+                                color: subTask.isCompleted ? 'text.disabled' : 'text.primary',
+                                wordBreak: 'break-word',
+                                fontSize: '0.95rem',
+                                lineHeight: '1.4em',
+                                m: 0,
+                                p: 0,
+                                display: 'block',
+                              }
+                            }}
+                          />
+                          <Box 
+                            className="action-buttons"
+                            sx={{ 
+                              display: 'flex',
+                              alignItems: 'center',
+                              opacity: 0,
+                              transition: 'opacity 0.2s',
+                              mr: -1
+                            }}
+                          >
+                            <Checkbox
+                              edge="end"
+                              checked={subTask.isCompleted}
+                              onChange={() => handleSubTaskComplete(index)}
+                              size="very-small"
+                              //sx={{ border: '1px solid blue' }}
+                            />
+                            <IconButton
+                              edge="end"
+                              size="small"
+                              onClick={() => handleSubTaskDelete(index)}
+                            >
+                              <DeleteIcon fontSize="very-small" />
+                            </IconButton>
+                          </Box>
+                        </ListItem>
+                      ))}
+                      <ListItem sx={{ pt: 0.5, pb: 0, px: 1.5 }}>
+                        <TextField
+                          fullWidth
+                          placeholder="Add a new sub-task"
+                          value={newSubTask}
+                          onChange={(e) => setNewSubTask(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const updatedTask = { ...task };
+                              if (!updatedTask.subTasks) {
+                                updatedTask.subTasks = [];
+                              }
+                              if (newSubTask.trim()) {
+                                updatedTask.subTasks.push({
+                                  title: newSubTask.trim(),
+                                  isCompleted: false
+                                });
+                                onUpdate(updatedTask);
+                                setNewSubTask('');
+                              }
+                            }
+                          }}
+                          size="small"
+                          sx={{ 
+                            mt: 0.5,
+                            '& .MuiOutlinedInput-root': {
+                              fontSize: '0.85rem',
+                              '& fieldset': {
+                                borderStyle: 'dashed',
+                                borderWidth: '1px',
+                              },
+                              '&:hover fieldset': {
+                                borderStyle: 'dashed',
+                                borderWidth: '1px',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderStyle: 'solid',
+                              }
+                            }
+                          }}
+                        />
+                      </ListItem>
+                    </List>
+                  </Box>
+
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
                     <Typography 
                       variant="subtitle2" 
-                      color={task?.remainingTime === 'Overdue' ? 'error.main' : 'success.main'}
+                      color={remainingTime === 'Overdue' ? 'error.main' : 'success.main'}
                       sx={{ fontWeight: 'bold' }}
                     >
-                      {task?.remainingTime}
+                      {['completed', 'cancelled'].includes(task.status) ? `${task.status === 'completed' ? 'Finished ' : 'Cancelled'} at: ${formatDateTime(task.updatedAt)}` : remainingTime}
                     </Typography>
                   </Box>
 
@@ -194,7 +412,6 @@ const TaskModal = ({
                   )}
                 </>
               ) : (
-                // Edit Mode
                 <Box component="form" sx={{ mt: 2 }}>
                   <TextField
                     fullWidth

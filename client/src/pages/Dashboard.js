@@ -13,7 +13,9 @@ import {
 import LogoutIcon from '@mui/icons-material/Logout';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import HistoryIcon from '@mui/icons-material/History';
-import axios from '../utils/axios';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AddIcon from '@mui/icons-material/Add';
+import axios from '../core/utils/axios';
 
 // Components
 import ViewToggle from '../features/tasks/components/ViewToggle';
@@ -21,13 +23,12 @@ import TaskList from '../features/tasks/components/TaskList';
 import KanbanBoard from '../features/tasks/components/KanbanBoard';
 import TaskFilters from '../features/tasks/components/TaskFilters';
 import TaskModal from '../features/tasks/components/TaskModal';
-import AddIcon from '@mui/icons-material/Add';
 import CreateTaskModal from '../features/tasks/components/CreateTaskModal';
 import SideDrawer from '../features/layout/components/SideDrawer';
 import ActivityLog from '../features/tasks/components/ActivityLog';
 
 // Utils
-import { formatDateTime, roundToMinute } from '../utils/dateUtils';
+import { formatDateTime, roundToMinute } from '../core/utils/dateUtils';
 import useTaskReminder from '../hooks/useTaskReminder';
 
 // Notification sound
@@ -134,7 +135,7 @@ const Dashboard = () => {
     try {
       const response = await axios.put(`/tasks/${updatedTask._id}`, {
         ...updatedTask,
-        dueDateTime: new Date(updatedTask.dueDateTime).toISOString(),
+        //dueDateTime: new Date(updatedTask.dueDateTime).toISOString(),
         reminderDateTime: new Date(updatedTask.reminderDateTime).toISOString()
       });
       setTasks(prevTasks => prevTasks.map(task => 
@@ -229,10 +230,10 @@ const Dashboard = () => {
         ...taskData,
         status: 'new'
       });
-      setTasks(prevTasks => [response.data, ...prevTasks]);
+      await fetchTasks(); // Tüm görevleri yeniden yükle
       addEvent('create', `Task "${response.data.title}" has been created`, response.data);
       setIsCreateModalOpen(false);
-      } catch (error) {
+    } catch (error) {
       console.error('Error creating task:', error);
     }
   };
@@ -307,6 +308,12 @@ const Dashboard = () => {
                 onClick={() => setIsActivityLogOpen(!isActivityLogOpen)}
               >
                 <HistoryIcon />
+              </IconButton>
+            </Tooltip>
+
+            <Tooltip title="Ayarlar">
+              <IconButton color="inherit" onClick={() => navigate('/settings')}>
+                <SettingsIcon />
               </IconButton>
             </Tooltip>
 

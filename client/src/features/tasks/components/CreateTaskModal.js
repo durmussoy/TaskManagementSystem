@@ -15,14 +15,19 @@ const CreateTaskModal = ({ open, onClose, onCreate }) => {
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    dueDateTime: '',
+    dueDateTime: '2030-01-01T00:00',
     reminderDateTime: ''
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     onCreate(newTask);
-    setNewTask({ title: '', description: '', dueDateTime: '', reminderDateTime: '' });
+    setNewTask({ 
+      title: '', 
+      description: '', 
+      dueDateTime: '2030-01-01T00:00', 
+      reminderDateTime: ''
+    });
   };
 
   return (

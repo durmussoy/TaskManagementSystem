@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     console.log('New task request:', req.body);
-    const { title, description, dueDateTime, reminderDateTime, status } = req.body;
+    const { title, description, dueDateTime, reminderDateTime, status, subTasks } = req.body;
 
     if (!title || !description || !dueDateTime || !reminderDateTime) {
       console.log('Missing fields:', { title, description, dueDateTime, reminderDateTime });
@@ -48,14 +48,27 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ message: 'Reminder time cannot be after due date' });
     }
 
+    // Validate sub-tasks if present
+    if (subTasks) {
+      for (const subTask of subTasks) {
+        if (!subTask.title || !subTask.title.trim()) {
+          return res.status(400).json({ message: 'All sub-tasks must have a title' });
+        }
+      }
+    }
+
     const task = new Task({
       title,
       description,
       dueDateTime,
-      reminderDateTime,
       status: status || 'new',
-      assignedTo: req.user.userId,
-      createdBy: req.user.userId
+      assignedTo: req.body.assignedTo || req.user.userId,
+      createdBy: req.user.userId,
+      subTasks: subTasks || [],
+      reminderSettings: [{
+        userId: req.user.userId,
+        reminderDateTime: reminderDateTime
+      }]
     });
 
     await task.save();
@@ -97,20 +110,37 @@ router.put('/:id', async (req, res) => {
       }
     }
 
-    if (req.body.reminderDateTime && req.body.dueDateTime) {
+    if (req.body.reminderDateTime) {
       const reminderDate = new Date(req.body.reminderDateTime);
-      const dueDate = new Date(req.body.dueDateTime);
+      const dueDate = new Date(req.body.dueDateTime || task.dueDateTime);
       if (reminderDate > dueDate) {
         return res.status(400).json({ message: 'Reminder time cannot be after due date' });
       }
+      // Kullanıcıya özel hatırlatma zamanını güncelle
+      task.setReminderDateTime(req.user.userId, reminderDate);
+      await task.save();
     }
 
-    const updatedTask = await Task.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    ).populate('assignedTo', 'name username')
-     .populate('createdBy', 'name username');
+    // Diğer alanları güncelle
+    if (req.body.title) task.title = req.body.title;
+    if (req.body.description) task.description = req.body.description;
+    if (req.body.dueDateTime) task.dueDateTime = req.body.dueDateTime;
+    if (req.body.status) task.status = req.body.status;
+    if (req.body.subTasks) {
+      // Validate sub-tasks
+      for (const subTask of req.body.subTasks) {
+        if (!subTask.title || !subTask.title.trim()) {
+          return res.status(400).json({ message: 'All sub-tasks must have a title' });
+        }
+      }
+      task.subTasks = req.body.subTasks;
+    }
+
+    await task.save();
+    
+    const updatedTask = await Task.findById(task._id)
+      .populate('assignedTo', 'name username')
+      .populate('createdBy', 'name username');
 
     res.json(updatedTask);
   } catch (error) {

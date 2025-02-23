@@ -6,6 +6,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Settings from './pages/Settings';
+import UserPanel from './pages/UserPanel';
 
 // Theme
 const theme = createTheme({
@@ -34,15 +36,35 @@ function App() {
             path="/login" 
             element={
               localStorage.getItem('token') 
-                ? <Navigate to="/" /> 
+                ? <Navigate to="/dashboard" /> 
                 : <Login />
             } 
           />
           <Route 
             path="/" 
+            element={<Navigate to="/dashboard" />} 
+          />
+          <Route 
+            path="/dashboard" 
             element={
               <PrivateRoute>
                 <Dashboard />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <PrivateRoute>
+                <Settings />
+              </PrivateRoute>
+            } 
+          />
+          <Route 
+            path="/user-panel" 
+            element={
+              <PrivateRoute>
+                <UserPanel />
               </PrivateRoute>
             } 
           />

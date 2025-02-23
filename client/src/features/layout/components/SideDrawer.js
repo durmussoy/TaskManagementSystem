@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Drawer,
   IconButton,
@@ -17,6 +17,8 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import BuildIcon from '@mui/icons-material/Build';
 import PersonIcon from '@mui/icons-material/Person';
+import SettingsIcon from '@mui/icons-material/Settings';
+import GroupIcon from '@mui/icons-material/Group';
 
 const drawerWidth = 240;
 
@@ -31,6 +33,10 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 const SideDrawer = ({ open, onClose, user }) => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const isActive = (path) => location.pathname === path;
+  const currentUser = user;
 
   return (
     <Drawer
@@ -96,6 +102,7 @@ const SideDrawer = ({ open, onClose, user }) => {
             minHeight: 48,
             justifyContent: open ? 'initial' : 'center',
             px: 2.5,
+            backgroundColor: isActive('/dashboard') ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
           }}
         >
           <ListItemIcon
@@ -113,35 +120,41 @@ const SideDrawer = ({ open, onClose, user }) => {
           />
         </ListItem>
 
-        <ListItem 
-          button
-          sx={{ 
-            minHeight: 48,
-            justifyContent: open ? 'initial' : 'center',
-            px: 2.5,
-          }}
-        >
-          <ListItemIcon
-            sx={{
-              minWidth: 0,
-              mr: open ? 3 : 'auto',
-              justifyContent: 'center',
+        {user?.role?.toLowerCase() === 'admin' && (
+          <ListItem 
+            button
+            onClick={() => navigate('/user-panel')}
+            sx={{ 
+              minHeight: 48,
+              justifyContent: open ? 'initial' : 'center',
+              px: 2.5,
+              backgroundColor: isActive('/user-panel') ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
             }}
           >
-            <BuildIcon />
-          </ListItemIcon>
-          <ListItemText 
-            primary="Tools" 
-            sx={{ opacity: open ? 1 : 0 }} 
-          />
-        </ListItem>
+            <ListItemIcon
+              sx={{
+                minWidth: 0,
+                mr: open ? 3 : 'auto',
+                justifyContent: 'center',
+              }}
+            >
+              <GroupIcon />
+            </ListItemIcon>
+            <ListItemText 
+              primary="User Panel" 
+              sx={{ opacity: open ? 1 : 0 }} 
+            />
+          </ListItem>
+        )}
 
         <ListItem 
           button
+          onClick={() => navigate('/settings')}
           sx={{ 
             minHeight: 48,
             justifyContent: open ? 'initial' : 'center',
             px: 2.5,
+            backgroundColor: isActive('/settings') ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
           }}
         >
           <ListItemIcon
@@ -151,10 +164,10 @@ const SideDrawer = ({ open, onClose, user }) => {
               justifyContent: 'center',
             }}
           >
-            <PersonIcon />
+            <SettingsIcon />
           </ListItemIcon>
           <ListItemText 
-            primary="User Panel" 
+            primary="Ayarlar" 
             sx={{ opacity: open ? 1 : 0 }} 
           />
         </ListItem>

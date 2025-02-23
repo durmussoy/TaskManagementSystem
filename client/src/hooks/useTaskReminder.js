@@ -1,69 +1,44 @@
 import { useEffect } from 'react';
-import axios from '../utils/axios';
 
 const useTaskReminder = ({ tasks, onTasksUpdate, onEventAdd, onPlaySound }) => {
   useEffect(() => {
     const checkReminders = () => {
       const now = new Date();
+      const currentUserId = JSON.parse(localStorage.getItem('user')).id;
+      let hasChanges = false;
+
       tasks.forEach(task => {
-        const reminderTime = new Date(task.reminderDateTime);
-        if (
-          task.status !== 'completed' && 
-          task.status !== 'cancelled' && 
-          task.status !== 'remind' && 
-          reminderTime <= now
-        ) {
-          handleTaskReminder(task);
+        if (task.status === 'pending') {
+          // Kullanıcıya özel hatırlatma ayarını bul
+          const userReminderSetting = task.reminderSettings?.find(
+            setting => setting.userId === currentUserId
+          );
+
+          if (userReminderSetting) {
+            const reminderTime = new Date(userReminderSetting.reminderDateTime);
+            if (reminderTime <= now) {
+              // Görev hatırlatma zamanı gelmiş
+              hasChanges = true;
+              onTasksUpdate(prevTasks => 
+                prevTasks.map(t => 
+                  t._id === task._id ? { ...t, status: 'remind' } : t
+                )
+              );
+              onEventAdd('reminder', `"${task.title}" görevi için hatırlatma zamanı geldi!`, task);
+              onPlaySound();
+            }
+          }
         }
       });
     };
 
-    const handleTaskReminder = async (task) => {
-      try {
-        const response = await axios.put(`/tasks/${task._id}`, {
-          ...task,
-          status: 'remind'
-        });
-        
-        onTasksUpdate(prevTasks => prevTasks.map(t => 
-          t._id === task._id ? response.data : t
-        ));
-        
-        onEventAdd('remind', `Task "${task.title}" reminder time has arrived`, response.data);
-        
-        onPlaySound();
-      } catch (error) {
-        console.error('Error updating task reminder status:', error);
-      }
-    };
-
-    const scheduleNextCheck = () => {
-      const now = new Date();
-      const nextMinute = new Date(now);
-      nextMinute.setSeconds(0);
-      nextMinute.setMilliseconds(0);
-      nextMinute.setMinutes(nextMinute.getMinutes() + 1);
-      
-      const delay = nextMinute.getTime() - now.getTime();
-      return setTimeout(() => {
-        checkReminders();
-        // Bir sonraki kontrol için yeni timeout ayarla
-        timeoutId = scheduleNextCheck();
-      }, delay);
-    };
-
-    // İlk kontrol
+    // Her dakika kontrol et
+    const interval = setInterval(checkReminders, 60000);
+    
+    // İlk yüklemede de kontrol et
     checkReminders();
 
-    // İlk timeout'u ayarla
-    let timeoutId = scheduleNextCheck();
-
-    // Cleanup
-    return () => {
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-    };
+    return () => clearInterval(interval);
   }, [tasks, onTasksUpdate, onEventAdd, onPlaySound]);
 };
 
