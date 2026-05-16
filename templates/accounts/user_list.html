@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}Users{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Users</h1>
+            <p class="page-subtitle">Admin-only user management panel.</p>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in users %}
+                        <tr>
+                            <td>{{ row.username }}</td>
+                            <td>{{ row.get_full_name|default:"-" }}</td>
+                            <td><span class="badge-secondary">{{ row.profile.get_role_display }}</span></td>
+                            <td>{{ row.is_active|yesno:"Active,Passive" }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'accounts:user_edit' row.pk %}" class="btn-outline-light btn-sm">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-center py-4">No users found.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

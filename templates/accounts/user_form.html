@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Edit User{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Edit {{ target_user.username }}</h1>
+            <p class="page-subtitle">Update role and account settings.</p>
+        </div>
+        <a href="{% url 'accounts:user_list' %}" class="btn-outline-light">Back</a>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="col-md-6">
+                    <label class="form-label">Username</label>
+                    {{ form.username }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Role</label>
+                    {{ form.role }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">First name</label>
+                    {{ form.first_name }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Last name</label>
+                    {{ form.last_name }}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">New password</label>
+                    {{ form.password }}
+                </div>
+                <div class="col-md-6 d-flex align-items-center">
+                    <div class="form-check mt-4">
+                        {{ form.is_active }}
+                        <label class="form-check-label" for="{{ form.is_active.id_for_label }}">Is active</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn-primary-gradient">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

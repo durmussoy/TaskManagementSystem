@@ -1,0 +1,12 @@
+{% for item in activities %}
+<div class="activity-item">
+    <div class="activity-icon activity-{{ item.action }}"><i class="bi bi-dot"></i></div>
+    <div>
+        <div class="mini-title">{{ item.message }}</div>
+        <div class="mini-meta">{{ item.created_at|date:"d.m.Y H:i" }}</div>
+    </div>
+</div>
+{% empty %}
+<div class="text-muted">No activity yet.</div>
+{% endfor %}
+

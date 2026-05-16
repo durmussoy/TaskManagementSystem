@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">Profile</h1>
+            <p class="page-subtitle">Manage your identity, preferences, and workspace defaults.</p>
+        </div>
+    </div>
+
+    <div class="profile-layout">
+        <aside class="profile-summary-card">
+            <div class="profile-avatar-xl">
+                {% if profile.avatar %}
+                <img src="{{ profile.avatar.url }}" alt="{{ user.get_full_name|default:user.username }}">
+                {% else %}
+                <span>{{ user.username|slice:":1"|upper }}</span>
+                {% endif %}
+            </div>
+            <div>
+                <h2>{{ user.get_full_name|default:user.username }}</h2>
+                <p>{{ profile.title|default:profile.get_role_display }}</p>
+            </div>
+            <div class="profile-summary-meta">
+                <div>
+                    <span>Role</span>
+                    <strong>{{ profile.get_role_display }}</strong>
+                </div>
+                <div>
+                    <span>Language</span>
+                    <strong>{{ profile.get_language_display }}</strong>
+                </div>
+                <div>
+                    <span>Timezone</span>
+                    <strong>{{ profile.timezone }}</strong>
+                </div>
+                <div>
+                    <span>Task view</span>
+                    <strong>{{ profile.get_default_task_view_display }}</strong>
+                </div>
+            </div>
+        </aside>
+
+        <section class="card profile-settings-card">
+            <div class="card-header">Profile Settings</div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" class="profile-form">
+                    {% csrf_token %}
+
+                    <div class="profile-form-section">
+                        <h3>Identity</h3>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Username</label>
+                                {{ form.username }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">First name</label>
+                                {{ form.first_name }}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Last name</label>
+                                {{ form.last_name }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                {{ form.email }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Title</label>
+                                {{ form.title }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-form-section">
+                        <h3>Preferences</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Language</label>
+                                {{ form.language }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Timezone</label>
+                                {{ form.timezone }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Default task view</label>
+                                {{ form.default_task_view }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="profile-form-section">
+                        <h3>Presentation</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Profile image</label>
+                                {{ form.avatar }}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Bio</label>
+                                {{ form.bio }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% for field in form %}
+                        {% if field.errors %}
+                        <div class="alert alert-danger py-2 mb-0">{{ field.label }}: {{ field.errors|join:", " }}</div>
+                        {% endif %}
+                    {% endfor %}
+
+                    <div class="profile-form-actions">
+                        <button type="submit" class="btn-primary-gradient"><i class="bi bi-check2"></i> Save Profile</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

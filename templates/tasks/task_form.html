@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">{{ page_title }}</h1>
+            <p class="page-subtitle">{% if is_edit %}Update the task details and reminder settings.{% else %}Create a new task and assign its reminder.{% endif %}</p>
+        </div>
+        <a href="{% if is_edit %}{% url 'tasks:task_detail' task.pk %}{% else %}{% url 'tasks:task_list' %}{% endif %}" class="btn-outline-light">Cancel</a>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            <form method="post" class="row g-3">
+                {% csrf_token %}
+                <div class="{% if form.status %}col-md-8{% else %}col-12{% endif %}">
+                    <label class="form-label">Title</label>
+                    {{ form.title }}
+                </div>
+                {% if form.status %}
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    {{ form.status }}
+                </div>
+                {% endif %}
+                <div class="col-12">
+                    <label class="form-label">Description</label>
+                    {{ form.description }}
+                </div>
+                {% if form.due_datetime %}
+                <div class="col-md-4">
+                    <label class="form-label">Due date</label>
+                    {{ form.due_datetime }}
+                </div>
+                {% endif %}
+                <div class="col-md-4">
+                    <label class="form-label">Reminder date</label>
+                    {{ form.reminder_datetime }}
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Assigned to</label>
+                    {{ form.assigned_to }}
+                </div>
+                {% if form.subtasks_text %}
+                <div class="col-12">
+                    <label class="form-label">Sub Tasks</label>
+                    {{ form.subtasks_text }}
+                    <div class="form-text">One sub-task per line.</div>
+                </div>
+                {% endif %}
+                {% for field in form %}
+                    {% if field.errors %}
+                    <div class="col-12">
+                        <div class="alert alert-danger py-2 mb-0">{{ field.label }}: {{ field.errors|join:", " }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+                <div class="col-12">
+                    <button type="submit" class="btn-primary-gradient">{% if is_edit %}Save Changes{% else %}Create Task{% endif %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

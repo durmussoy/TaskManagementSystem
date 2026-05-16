@@ -1,0 +1,160 @@
+<div class="page-header">
+    <div>
+        <h1 class="page-title">{{ task.title }}</h1>
+        {% if task.description %}
+        <p class="page-subtitle">{{ task.description|linebreaksbr }}</p>
+        {% endif %}
+    </div>
+    <div class="task-icon-actions">
+        {% if task.status != "completed" and task.status != "cancelled" %}
+        <div class="dropdown postpone-menu">
+            <button type="button" class="icon-action-btn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Postpone reminder" data-bs-placement="bottom" aria-label="Postpone reminder">
+                <i class="bi bi-calendar-plus"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end postpone-dropdown">
+                <div class="postpone-dropdown-title">Postpone</div>
+                <div class="postpone-presets">
+                    <form method="post" action="{% url 'tasks:task_postpone' task.pk %}" {% if is_modal %}hx-post="{% url 'tasks:task_postpone' task.pk %}" hx-swap="none"{% endif %}>
+                        {% csrf_token %}
+                        <input type="hidden" name="postpone_for" value="1m">
+                        <button type="submit" class="postpone-preset-btn">1 min</button>
+                    </form>
+                    <form method="post" action="{% url 'tasks:task_postpone' task.pk %}" {% if is_modal %}hx-post="{% url 'tasks:task_postpone' task.pk %}" hx-swap="none"{% endif %}>
+                        {% csrf_token %}
+                        <input type="hidden" name="postpone_for" value="10m">
+                        <button type="submit" class="postpone-preset-btn">10 min</button>
+                    </form>
+                    <form method="post" action="{% url 'tasks:task_postpone' task.pk %}" {% if is_modal %}hx-post="{% url 'tasks:task_postpone' task.pk %}" hx-swap="none"{% endif %}>
+                        {% csrf_token %}
+                        <input type="hidden" name="postpone_for" value="1h">
+                        <button type="submit" class="postpone-preset-btn">1 hour</button>
+                    </form>
+                    <form method="post" action="{% url 'tasks:task_postpone' task.pk %}" {% if is_modal %}hx-post="{% url 'tasks:task_postpone' task.pk %}" hx-swap="none"{% endif %}>
+                        {% csrf_token %}
+                        <input type="hidden" name="postpone_for" value="1d">
+                        <button type="submit" class="postpone-preset-btn">1 day</button>
+                    </form>
+                    <form method="post" action="{% url 'tasks:task_postpone' task.pk %}" {% if is_modal %}hx-post="{% url 'tasks:task_postpone' task.pk %}" hx-swap="none"{% endif %}>
+                        {% csrf_token %}
+                        <input type="hidden" name="postpone_for" value="1w">
+                        <button type="submit" class="postpone-preset-btn">1 week</button>
+                    </form>
+                </div>
+                <form method="post" action="{% url 'tasks:task_postpone' task.pk %}" class="postpone-custom-form" {% if is_modal %}hx-post="{% url 'tasks:task_postpone' task.pk %}" hx-swap="none"{% endif %}>
+                    {% csrf_token %}
+                    <label class="form-label" for="{{ postpone_form.custom_date.id_for_label }}">Custom</label>
+                    <div class="postpone-custom-row">
+                        {{ postpone_form.custom_date }}
+                        {{ postpone_form.custom_hour }}
+                        {{ postpone_form.custom_minute }}
+                        <button type="submit" class="icon-action-btn icon-action-btn-sm" title="Apply custom reminder" data-bs-toggle="tooltip" aria-label="Apply custom reminder">
+                            <i class="bi bi-check2"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        {% if task.status != "completed" and task.status != "cancelled" %}
+        <form method="post" action="{% url 'tasks:task_complete' task.pk %}">{% csrf_token %}
+            <button type="submit" class="icon-action-btn icon-action-success" title="Complete task" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Complete task">
+                <i class="bi bi-check2-circle"></i>
+            </button>
+        </form>
+        <form method="post" action="{% url 'tasks:task_cancel' task.pk %}">{% csrf_token %}
+            <button type="submit" class="icon-action-btn icon-action-danger" title="Cancel task" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Cancel task">
+                <i class="bi bi-x-circle"></i>
+            </button>
+        </form>
+        {% endif %}
+        <a href="{% url 'tasks:task_edit' task.pk %}" class="icon-action-btn" title="Edit task" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Edit task"><i class="bi bi-pencil"></i></a>
+        {% if task.created_by == user %}
+        <a href="{% url 'tasks:task_delete' task.pk %}" class="icon-action-btn icon-action-danger" title="Delete task" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Delete task"><i class="bi bi-trash"></i></a>
+        {% endif %}
+        {% if is_modal %}
+        <a href="{% url 'tasks:task_detail' task.pk %}" class="icon-action-btn" title="Open full page" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Open full page"><i class="bi bi-arrows-fullscreen"></i></a>
+        {% endif %}
+        <a href="{% url 'tasks:task_list' %}" class="icon-action-btn" title="Back to tasks" data-bs-toggle="tooltip" data-bs-placement="bottom" aria-label="Back to tasks"><i class="bi bi-arrow-left"></i></a>
+    </div>
+</div>
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body task-detail-summary">
+                <div>
+                    <span class="badge-{{ task.status }}">{{ task.get_status_display }}</span>
+                </div>
+                <div class="row g-2 task-detail-meta">
+                    <div class="col-md-6"><strong>Assigned to:</strong> {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</div>
+                    <div class="col-md-6"><strong>Created by:</strong> {{ task.created_by.get_full_name|default:task.created_by.username }}</div>
+                    <div class="col-md-6"><strong>Due:</strong> {% if task.due_datetime %}{{ task.due_datetime|date:"d.m.Y H:i" }}{% else %}-{% endif %}</div>
+                    <div class="col-md-6"><strong>Reminder:</strong> {% if task.active_reminder %}{{ task.active_reminder.reminder_datetime|date:"d.m.Y H:i" }}{% else %}-{% endif %}</div>
+                </div>
+            </div>
+        </div>
+        <div class="subtask-panel">
+            <div class="subtask-header">
+                <h5 class="mb-0">Sub Tasks</h5>
+                <form method="post" action="{% url 'tasks:subtask_add' task.pk %}" class="subtask-add-form" {% if is_modal %}hx-post="{% url 'tasks:subtask_add' task.pk %}" hx-target="#taskDetailBody" hx-swap="innerHTML"{% endif %}>
+                    {% csrf_token %}
+                    <input type="text" name="title" class="form-control form-control-sm" placeholder="Add sub-task" maxlength="255" required>
+                    <button type="submit" class="icon-action-btn icon-action-btn-sm" title="Add sub-task" data-bs-toggle="tooltip" aria-label="Add sub-task">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </form>
+            </div>
+            <div class="list-group">
+                {% for subtask in task.subtasks.all %}
+                <div class="list-group-item subtask-item">
+                    <div class="subtask-row">
+                        <div class="subtask-title {% if is_modal %}subtask-title-truncated{% endif %} {% if subtask.is_completed %}text-decoration-line-through text-muted{% endif %}" title="{{ subtask.title }}">{{ subtask.title }}</div>
+                        <div class="subtask-row-actions">
+                            {% if is_modal %}
+                            <span class="subtask-comment-count" title="{{ subtask.comments.count }} comment{{ subtask.comments.count|pluralize }}" data-bs-toggle="tooltip">
+                                <i class="bi bi-chat-left-text"></i>
+                                {{ subtask.comments.count }}
+                            </span>
+                            {% else %}
+                            <button type="button" class="subtask-comment-count" data-bs-toggle="collapse" data-bs-target="#subtask-comments-{{ subtask.pk }}" aria-expanded="false" aria-controls="subtask-comments-{{ subtask.pk }}" title="{{ subtask.comments.count }} comment{{ subtask.comments.count|pluralize }}">
+                                <i class="bi bi-chat-left-text"></i>
+                                {{ subtask.comments.count }}
+                            </button>
+                            {% endif %}
+                            <form method="post" action="{% url 'tasks:subtask_toggle' subtask.pk %}" {% if is_modal %}hx-post="{% url 'tasks:subtask_toggle' subtask.pk %}" hx-target="#taskDetailBody" hx-swap="innerHTML"{% endif %}>
+                                {% csrf_token %}
+                                <button type="submit" class="icon-action-btn icon-action-btn-sm" title="{% if subtask.is_completed %}Mark sub-task incomplete{% else %}Complete sub-task{% endif %}" data-bs-toggle="tooltip" aria-label="{% if subtask.is_completed %}Mark sub-task incomplete{% else %}Complete sub-task{% endif %}">
+                                    <i class="bi {% if subtask.is_completed %}bi-arrow-counterclockwise{% else %}bi-check2{% endif %}"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {% if not is_modal %}
+                    <div class="collapse subtask-comments" id="subtask-comments-{{ subtask.pk }}">
+                        {% for comment in subtask.comments.all %}
+                        <div class="subtask-comment">
+                            <div class="subtask-comment-meta">
+                                {{ comment.created_by.get_full_name|default:comment.created_by.username|default:"Deleted user" }}
+                                <span>{{ comment.created_at|date:"d.m.Y H:i" }}</span>
+                            </div>
+                            <div class="subtask-comment-body">{{ comment.body|linebreaksbr }}</div>
+                        </div>
+                        {% empty %}
+                        <div class="subtask-comment-empty">No comments yet.</div>
+                        {% endfor %}
+                        <form method="post" action="{% url 'tasks:subtask_comment_add' subtask.pk %}" class="subtask-comment-form">
+                            {% csrf_token %}
+                            <input type="text" name="body" class="form-control form-control-sm" placeholder="Add comment" maxlength="1000" required>
+                            <button type="submit" class="icon-action-btn icon-action-btn-sm" title="Add comment" data-bs-toggle="tooltip" aria-label="Add comment">
+                                <i class="bi bi-chat-left-text"></i>
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <div class="list-group-item text-muted">No sub-tasks.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>

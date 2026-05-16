@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ task.title }}{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    {% include 'tasks/partials/task_detail_body.html' %}
+</div>
+{% endblock %}
+

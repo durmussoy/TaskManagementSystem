@@ -1,0 +1,48 @@
+<div class="modal fade" id="taskCreateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content quick-task-modal">
+            <form method="post" action="{% url 'tasks:task_create' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">New Task</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="quick-task-fields">
+                        <div>
+                            <label class="form-label">Title <span class="text-danger">*</span></label>
+                            {{ create_form.title }}
+                        </div>
+                        <div>
+                            <label class="form-label">Description</label>
+                            {{ create_form.description }}
+                        </div>
+                        <div class="form-check quick-private-check">
+                            {{ create_form.is_private }}
+                            <label class="form-check-label" for="{{ create_form.is_private.id_for_label }}">Private</label>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Assign to</label>
+                                {{ create_form.assigned_to }}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Reminder date</label>
+                                {{ create_form.reminder_datetime }}
+                            </div>
+                        </div>
+                    </div>
+                    {% for field in create_form %}
+                        {% if field.errors %}
+                        <div class="alert alert-danger py-2 mt-3 mb-0">{{ field.label }}: {{ field.errors|join:", " }}</div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-primary-gradient"><i class="bi bi-plus-lg"></i> Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

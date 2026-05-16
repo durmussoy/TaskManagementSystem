@@ -1,0 +1,216 @@
+{% extends 'base.html' %}
+
+{% block title %}Tasks{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="tasks-compact-header">
+        <h1 class="page-title mb-0">Tasks</h1>
+        <form method="get" class="tasks-filter-form">
+            <input type="hidden" name="view" value="{{ view_mode }}">
+            <input type="hidden" name="sort" value="{{ sort_key }}">
+            <input type="hidden" name="direction" value="{{ direction }}">
+            <input type="text" name="q" class="form-control form-control-sm" placeholder="Search tasks..." value="{{ query }}">
+            {% for selected_status in selected_statuses %}
+            <input type="hidden" name="status" value="{{ selected_status }}">
+            {% endfor %}
+            <select name="assigned" class="form-select form-select-sm">
+                <option value="all" {% if assigned_filter == "all" %}selected{% endif %}>All Assigned</option>
+                {% for assigned_user in assigned_users %}
+                <option value="{{ assigned_user.pk }}" {% if assigned_filter == assigned_user.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ assigned_user.get_full_name|default:assigned_user.username }}
+                </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-outline-light btn-sm"><i class="bi bi-search"></i> Apply</button>
+        </form>
+        <div class="filter-pills filter-pills-compact">
+            <a class="filter-pill {% if all_statuses_selected %}active{% endif %}" href="{{ status_links.all }}">All</a>
+            <a class="filter-pill {% if 'new' in selected_statuses %}active{% endif %}" href="{{ status_links.new }}">New ({{ status_counts.new }})</a>
+            <a class="filter-pill {% if 'pending' in selected_statuses %}active{% endif %}" href="{{ status_links.pending }}">Pending ({{ status_counts.pending }})</a>
+            <a class="filter-pill {% if 'remind' in selected_statuses %}active{% endif %}" href="{{ status_links.remind }}">Reminder ({{ status_counts.remind }})</a>
+            <a class="filter-pill {% if 'completed' in selected_statuses %}active{% endif %}" href="{{ status_links.completed }}">Completed ({{ status_counts.completed }})</a>
+            <a class="filter-pill {% if 'cancelled' in selected_statuses %}active{% endif %}" href="{{ status_links.cancelled }}">Cancelled ({{ status_counts.cancelled }})</a>
+        </div>
+        <div class="view-toggle" aria-label="Task view">
+            <a href="{{ view_links.cards }}" class="view-toggle-item {% if view_mode == 'cards' %}active{% endif %}">
+                <i class="bi bi-grid-3x3-gap"></i> Cards
+            </a>
+            <a href="{{ view_links.list }}" class="view-toggle-item {% if view_mode == 'list' %}active{% endif %}">
+                <i class="bi bi-table"></i> List
+            </a>
+        </div>
+        <div class="tasks-header-actions">
+            <a href="{{ export_url }}" class="btn-outline-light btn-sm"><i class="bi bi-download"></i> Export</a>
+            <button type="button" class="btn-outline-light btn-sm" data-bs-toggle="modal" data-bs-target="#taskImportModal"><i class="bi bi-file-earmark-spreadsheet"></i> Import</button>
+            <button type="button" class="btn-primary-gradient btn-sm" data-bs-toggle="modal" data-bs-target="#taskCreateModal"><i class="bi bi-plus-lg"></i> New Task</button>
+            <button class="btn-outline-light btn-sm" type="button" data-bs-toggle="offcanvas" data-bs-target="#activityCanvas">
+                <i class="bi bi-clock-history"></i> Activity
+            </button>
+        </div>
+    </div>
+
+    {% if view_mode == "list" %}
+    <div class="task-table-shell">
+        <div class="table-responsive">
+            <table class="task-data-table">
+                <thead>
+                    <tr>
+                        <th><a href="{{ sort_links.title }}">Title {% if sort_key == "title" %}<i class="bi bi-arrow-{% if direction == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}</a></th>
+                        <th>Description</th>
+                        <th><a href="{{ sort_links.status }}">Status {% if sort_key == "status" %}<i class="bi bi-arrow-{% if direction == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}</a></th>
+                        <th><a href="{{ sort_links.due }}">Due {% if sort_key == "due" %}<i class="bi bi-arrow-{% if direction == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}</a></th>
+                        <th>Reminder</th>
+                        <th><a href="{{ sort_links.assigned }}">Assigned {% if sort_key == "assigned" %}<i class="bi bi-arrow-{% if direction == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}</a></th>
+                        <th>Subtasks</th>
+                        <th><a href="{{ sort_links.created }}">Created {% if sort_key == "created" %}<i class="bi bi-arrow-{% if direction == 'asc' %}up{% else %}down{% endif %}"></i>{% endif %}</a></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for task in tasks %}
+                    <tr class="task-table-row"
+                        hx-get="{% url 'tasks:task_detail' task.pk %}"
+                        hx-target="#taskDetailBody"
+                        hx-trigger="click"
+                        data-task-id="{{ task.pk }}"
+                        data-bs-toggle="modal"
+                        data-bs-target="#taskDetailModal">
+                        <td class="task-table-title">{{ task.title }}</td>
+                        <td>{{ task.description|truncatechars:70 }}</td>
+                        <td><span class="task-status-badge badge-{{ task.status }}">{{ task.get_status_display }}</span></td>
+                        <td>{% if task.due_datetime %}{{ task.due_datetime|date:"d.m.Y H:i" }}{% else %}-{% endif %}</td>
+                        <td class="task-reminder-cell">{% if task.active_reminder %}{{ task.active_reminder.reminder_datetime|date:"d.m.Y H:i" }}{% else %}-{% endif %}</td>
+                        <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                        <td>{{ task.subtasks.count }}</td>
+                        <td>{{ task.created_at|date:"d.m.Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="task-table-empty">No tasks found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="task-board">
+        {% for task in tasks %}
+        <a href="{% url 'tasks:task_detail' task.pk %}"
+           class="task-board-card task-board-card-{{ task.status }}"
+           hx-get="{% url 'tasks:task_detail' task.pk %}"
+           hx-target="#taskDetailBody"
+           hx-trigger="click"
+           data-task-id="{{ task.pk }}"
+           data-bs-toggle="modal"
+           data-bs-target="#taskDetailModal">
+            <div>
+                <div class="task-board-title">{{ task.title }}</div>
+                <p class="task-board-description">{{ task.description|truncatechars:80 }}</p>
+            </div>
+            <div class="task-board-status">
+                <span class="task-status-badge badge-{{ task.status }}">{{ task.get_status_display }}</span>
+                <span class="task-board-date">{% if task.due_datetime %}{{ task.due_datetime|date:"d.m.Y H:i" }}{% else %}No due date{% endif %}</span>
+            </div>
+            <div class="task-board-meta">
+                <span><i class="bi bi-person"></i> {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</span>
+                <span class="task-reminder-meta">{% if task.active_reminder %}<i class="bi bi-bell"></i> {{ task.active_reminder.reminder_datetime|date:"d.m.Y H:i" }}{% else %}<i class="bi bi-bell-slash"></i> No reminder{% endif %}</span>
+            </div>
+        </a>
+        {% empty %}
+        <div class="empty-state task-board-empty">
+            <div class="empty-state-title">No tasks found.</div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+{% include 'tasks/partials/task_create_modal.html' %}
+
+<div class="modal fade" id="taskImportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'tasks:task_import' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">Import Tasks</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Excel file</label>
+                    {{ import_form.file }}
+                    <div class="form-text">Required columns: Title, Description, Due date, Assigned.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn-primary-gradient"><i class="bi bi-upload"></i> Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="taskDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-body" id="taskDetailBody">
+                <div class="text-center p-4 text-muted">Select a task.</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="activityCanvas">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title">Activity Log</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body" id="activityPanel">
+        {% include 'tasks/partials/activity_panel.html' with activities=activities %}
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updatePostponedTask(payload) {
+    if (!payload || !payload.taskId) {
+        return;
+    }
+    const taskEl = document.querySelector(`[data-task-id="${payload.taskId}"]`);
+    if (!taskEl) {
+        return;
+    }
+
+    const statusBadge = taskEl.querySelector(".task-status-badge");
+    if (statusBadge) {
+        statusBadge.className = `task-status-badge badge-${payload.status}`;
+        statusBadge.textContent = payload.statusLabel;
+    }
+
+    if (taskEl.classList.contains("task-board-card")) {
+        taskEl.classList.remove("task-board-card-new", "task-board-card-pending", "task-board-card-remind", "task-board-card-completed", "task-board-card-cancelled");
+        taskEl.classList.add(`task-board-card-${payload.status}`);
+        const reminderMeta = taskEl.querySelector(".task-reminder-meta");
+        if (reminderMeta) {
+            reminderMeta.innerHTML = `<i class="bi bi-bell"></i> ${payload.reminderLabel}`;
+        }
+    }
+
+    const reminderCell = taskEl.querySelector(".task-reminder-cell");
+    if (reminderCell) {
+        reminderCell.textContent = payload.reminderLabel;
+    }
+}
+
+document.body.addEventListener("taskPostponed", function (event) {
+    updatePostponedTask(event.detail);
+    const taskModalEl = document.getElementById("taskDetailModal");
+    const taskModal = bootstrap.Modal.getInstance(taskModalEl) || new bootstrap.Modal(taskModalEl);
+    taskModal.hide();
+    document.getElementById("taskDetailBody").innerHTML = '<div class="text-center p-4 text-muted">Select a task.</div>';
+});
+</script>
+{% endblock %}
